@@ -1,0 +1,340 @@
+:root {
+  --bg: #0f1717;
+  --bg-soft: rgba(17, 31, 31, 0.78);
+  --ink: #102020;
+  --paper: #f4ebd9;
+  --paper-strong: #fff8ec;
+  --muted: #bcae95;
+  --line: rgba(255, 248, 236, 0.12);
+  --accent: #d86a2f;
+  --accent-strong: #f08b3f;
+  --cool: #7cc5bc;
+  --cool-deep: #204845;
+  --shadow: 0 28px 70px rgba(0, 0, 0, 0.28);
+  font-family: "Avenir Next", "Trebuchet MS", sans-serif;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  min-height: 100vh;
+  background:
+    radial-gradient(circle at top left, rgba(216, 106, 47, 0.2), transparent 35%),
+    radial-gradient(circle at bottom right, rgba(124, 197, 188, 0.16), transparent 30%),
+    linear-gradient(160deg, #0b1212 0%, #111d1d 45%, #0c1414 100%);
+  color: var(--paper);
+}
+
+.ambient {
+  position: fixed;
+  inset: auto;
+  border-radius: 999px;
+  filter: blur(60px);
+  opacity: 0.55;
+  pointer-events: none;
+}
+
+.ambient-one {
+  width: 22rem;
+  height: 22rem;
+  top: -4rem;
+  right: -3rem;
+  background: rgba(216, 106, 47, 0.22);
+}
+
+.ambient-two {
+  width: 20rem;
+  height: 20rem;
+  bottom: -5rem;
+  left: -3rem;
+  background: rgba(124, 197, 188, 0.18);
+}
+
+.shell {
+  position: relative;
+  z-index: 1;
+  max-width: 1380px;
+  margin: 0 auto;
+  padding: 2.25rem;
+}
+
+.hero {
+  display: grid;
+  grid-template-columns: 1.5fr 1fr;
+  gap: 1.5rem;
+  padding: 1.75rem;
+  border: 1px solid var(--line);
+  border-radius: 28px;
+  background: linear-gradient(145deg, rgba(18, 30, 30, 0.96), rgba(12, 20, 20, 0.84));
+  box-shadow: var(--shadow);
+}
+
+.eyebrow,
+.panel-kicker {
+  margin: 0 0 0.6rem;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: var(--cool);
+  font-size: 0.78rem;
+}
+
+h1,
+h2,
+h3 {
+  font-family: Georgia, "Times New Roman", serif;
+  margin: 0;
+}
+
+h1 {
+  font-size: clamp(2.3rem, 4vw, 4.1rem);
+  line-height: 0.95;
+  max-width: 10ch;
+}
+
+.hero-text {
+  max-width: 44rem;
+  margin: 1rem 0 1.25rem;
+  color: var(--paper);
+  font-size: 1.05rem;
+  line-height: 1.6;
+}
+
+.hero-badges {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+}
+
+.hero-badges span,
+.pill {
+  display: inline-flex;
+  align-items: center;
+  border-radius: 999px;
+  border: 1px solid rgba(124, 197, 188, 0.28);
+  padding: 0.45rem 0.8rem;
+  color: var(--paper-strong);
+  background: rgba(124, 197, 188, 0.08);
+  font-size: 0.82rem;
+}
+
+.hero-metrics {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 1rem;
+}
+
+.hero-metrics article,
+.panel,
+.console-card {
+  border: 1px solid var(--line);
+  border-radius: 24px;
+}
+
+.hero-metrics article {
+  padding: 1.1rem;
+  background: rgba(244, 235, 217, 0.06);
+}
+
+.hero-metrics span {
+  display: block;
+  margin-bottom: 0.45rem;
+  color: var(--muted);
+  font-size: 0.9rem;
+}
+
+.hero-metrics strong {
+  font-size: 1.4rem;
+  color: var(--paper-strong);
+}
+
+.workspace {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 1.5rem;
+  margin-top: 1.5rem;
+}
+
+.panel {
+  padding: 1.5rem;
+  background: linear-gradient(180deg, rgba(247, 238, 224, 0.96), rgba(239, 228, 208, 0.88));
+  color: var(--ink);
+  box-shadow: var(--shadow);
+}
+
+.panel-ink {
+  background: linear-gradient(180deg, rgba(20, 32, 32, 0.96), rgba(12, 22, 22, 0.9));
+  color: var(--paper);
+}
+
+.panel-ink .panel-kicker {
+  color: var(--accent-strong);
+}
+
+.panel-header {
+  margin-bottom: 1.25rem;
+}
+
+.panel-header h2 {
+  font-size: 2rem;
+}
+
+.stack {
+  display: grid;
+  gap: 1rem;
+}
+
+label {
+  display: grid;
+  gap: 0.45rem;
+}
+
+label span {
+  font-size: 0.88rem;
+  font-weight: 700;
+  letter-spacing: 0.03em;
+}
+
+input,
+textarea,
+button {
+  width: 100%;
+  border-radius: 16px;
+  border: 1px solid rgba(16, 32, 32, 0.12);
+  padding: 0.9rem 1rem;
+  font: inherit;
+}
+
+input,
+textarea {
+  background: rgba(255, 255, 255, 0.66);
+  color: var(--ink);
+  resize: vertical;
+}
+
+.panel-ink input,
+.panel-ink textarea {
+  border-color: rgba(255, 248, 236, 0.14);
+  background: rgba(255, 248, 236, 0.06);
+  color: var(--paper);
+}
+
+input:focus,
+textarea:focus,
+button:focus {
+  outline: 2px solid rgba(216, 106, 47, 0.5);
+  outline-offset: 2px;
+}
+
+button {
+  border: none;
+  background: linear-gradient(135deg, var(--accent), var(--accent-strong));
+  color: #fff8ee;
+  font-weight: 700;
+  letter-spacing: 0.03em;
+  cursor: pointer;
+  transition: transform 160ms ease, box-shadow 160ms ease;
+  box-shadow: 0 18px 40px rgba(216, 106, 47, 0.24);
+}
+
+button:hover:not(:disabled) {
+  transform: translateY(-1px);
+}
+
+button:disabled {
+  cursor: wait;
+  opacity: 0.72;
+}
+
+.bookmark-flow {
+  padding: 1rem;
+  border-radius: 18px;
+  border: 1px solid rgba(124, 197, 188, 0.22);
+  background: rgba(124, 197, 188, 0.08);
+}
+
+.bookmark-flow p {
+  margin: 0.45rem 0 0;
+  color: rgba(255, 248, 236, 0.82);
+  line-height: 1.5;
+}
+
+.console-grid {
+  display: grid;
+  grid-template-columns: 1.2fr 1.2fr 0.8fr;
+  gap: 1.5rem;
+  margin-top: 1.5rem;
+}
+
+.console-card {
+  padding: 1.25rem;
+  background: rgba(13, 22, 22, 0.86);
+  box-shadow: var(--shadow);
+}
+
+.console-title-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 0.8rem;
+  margin-bottom: 1rem;
+}
+
+.pill-warm {
+  border-color: rgba(216, 106, 47, 0.3);
+  background: rgba(216, 106, 47, 0.12);
+}
+
+.pill-cool {
+  border-color: rgba(124, 197, 188, 0.28);
+  background: rgba(124, 197, 188, 0.08);
+}
+
+#status-output,
+#root-dir {
+  margin: 0;
+  color: var(--paper-strong);
+  white-space: pre-wrap;
+  line-height: 1.6;
+  font-family: "SFMono-Regular", Consolas, monospace;
+}
+
+#result-body p {
+  margin: 0 0 0.8rem;
+  line-height: 1.55;
+  white-space: pre-wrap;
+}
+
+.result-card {
+  background: linear-gradient(180deg, rgba(22, 34, 34, 0.96), rgba(15, 24, 24, 0.92));
+}
+
+@media (max-width: 1120px) {
+  .hero,
+  .workspace,
+  .console-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 720px) {
+  .shell {
+    padding: 1rem;
+  }
+
+  .hero,
+  .panel,
+  .console-card {
+    border-radius: 20px;
+  }
+
+  h1 {
+    max-width: none;
+  }
+
+  .hero-metrics {
+    grid-template-columns: 1fr 1fr;
+  }
+}
