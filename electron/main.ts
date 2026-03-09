@@ -60,7 +60,12 @@ function createWindow() {
     minHeight: 760,
     show: false,
     autoHideMenuBar: true,
-    backgroundColor: "#f6f1e8",
+    titleBarStyle: "hiddenInset",
+    trafficLightPosition: { x: 16, y: 18 },
+    vibrancy: "under-window",
+    visualEffectState: "active",
+    transparent: true,
+    backgroundColor: "#00000000",
     title: "NarukeAlpha Studio",
     webPreferences: {
       preload: path.join(__dirname, "preload.cjs"),

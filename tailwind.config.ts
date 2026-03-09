@@ -26,16 +26,22 @@ const config: Config = {
         "destructive-foreground": "hsl(var(--destructive-foreground))"
       },
       fontFamily: {
-        sans: ["Avenir Next", "IBM Plex Sans", "ui-sans-serif", "system-ui", "sans-serif"],
-        serif: ["Iowan Old Style", "Palatino Linotype", "Book Antiqua", "serif"]
+        sans: [".AppleSystemUIFont", "SF Pro Display", "SF Pro Text", "Avenir Next", "ui-sans-serif", "system-ui", "sans-serif"],
+        serif: ["New York", "Iowan Old Style", "Palatino Linotype", "Book Antiqua", "serif"]
       },
       boxShadow: {
-        panel: "0 18px 60px rgba(15, 23, 42, 0.08)"
+        panel: "0 8px 32px rgba(0, 0, 0, 0.06), 0 1px 3px rgba(0, 0, 0, 0.04)",
+        "glass-glow": "0 0 48px rgba(255, 255, 255, 0.12), 0 8px 32px rgba(0, 0, 0, 0.06)",
+        "glass-inset": "inset 0 1px 0 0 rgba(255, 255, 255, 0.72)"
       },
       borderRadius: {
         xl: "1rem",
         "2xl": "1.5rem",
         "3xl": "2rem"
+      },
+      backdropBlur: {
+        glass: "28px",
+        "glass-heavy": "44px"
       }
     }
   },

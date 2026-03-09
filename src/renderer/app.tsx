@@ -50,7 +50,7 @@ const navItems: Array<{ key: ViewKey; label: string; icon: typeof Globe }> = [
 ];
 
 const activityToneClasses: Record<ActivityTone, string> = {
-  neutral: "bg-muted",
+  neutral: "bg-muted-foreground/40",
   success: "bg-success",
   warning: "bg-warning",
   error: "bg-destructive"
@@ -237,9 +237,13 @@ function App() {
   }
 
   return (
-    <div className="min-h-screen bg-background text-foreground">
-      <div className="grid min-h-screen grid-cols-1 gap-4 p-4 xl:grid-cols-[240px_minmax(0,1fr)_300px]">
-        <Card className="flex h-full flex-col bg-card/95 xl:max-h-[calc(100vh-2rem)]">
+    <div className="min-h-screen text-foreground">
+      {/* Titlebar drag region */}
+      <div className="titlebar-drag fixed inset-x-0 top-0 z-50 h-12" />
+
+      <div className="grid min-h-screen grid-cols-1 gap-4 p-4 pt-12 xl:grid-cols-[240px_minmax(0,1fr)_300px]">
+        {/* Sidebar */}
+        <Card className="titlebar-no-drag flex h-full flex-col glass-heavy xl:max-h-[calc(100vh-4rem)]">
           <CardHeader className="space-y-4 pb-4">
             <div className="space-y-2">
               <Badge variant="secondary" className="w-fit">Studio</Badge>
@@ -265,7 +269,7 @@ function App() {
                   <Button
                     key={item.key}
                     variant={active ? "secondary" : "ghost"}
-                    className="justify-start"
+                    className={cn("justify-start", active && "bg-white/40")}
                     onClick={() => setView(item.key)}
                   >
                     <Icon className="h-4 w-4" />
@@ -275,18 +279,18 @@ function App() {
               })}
             </nav>
 
-            <Separator />
+            <Separator className="bg-white/30" />
 
             <div className="grid gap-3">
               {metrics.map((metric) => (
-                <div key={metric.label} className="rounded-2xl border border-border bg-background/70 px-4 py-3">
+                <div key={metric.label} className="glass-subtle rounded-2xl px-4 py-3">
                   <p className="text-xs uppercase tracking-[0.16em] text-muted-foreground">{metric.label}</p>
                   <p className="mt-2 font-serif text-2xl">{metric.value}</p>
                 </div>
               ))}
             </div>
 
-            <div className="mt-auto rounded-2xl border border-border bg-secondary/40 px-4 py-3 text-xs text-muted-foreground">
+            <div className="mt-auto glass-subtle rounded-2xl px-4 py-3 text-xs text-muted-foreground">
               <div className="mb-1 flex items-center gap-2">
                 <FolderGit2 className="h-4 w-4" />
                 <span className="truncate">{status ? shortenPath(status.rootDir) : loadingStatus ? "Loading" : "Unavailable"}</span>
@@ -299,10 +303,11 @@ function App() {
           </CardContent>
         </Card>
 
-        <main className="min-w-0 xl:max-h-[calc(100vh-2rem)]">
+        {/* Main content */}
+        <main className="titlebar-no-drag min-w-0 xl:max-h-[calc(100vh-4rem)]">
           {view === "dashboard" ? (
-            <Card className="flex h-full min-h-[70vh] flex-col overflow-hidden bg-card/95">
-              <CardHeader className="flex flex-row items-center justify-between gap-3 border-b border-border pb-4">
+            <Card className="flex h-full min-h-[70vh] flex-col overflow-hidden">
+              <CardHeader className="flex flex-row items-center justify-between gap-3 border-b border-white/20 pb-4">
                 <div>
                   <CardTitle className="text-xl">Dashboard</CardTitle>
                   <p className="text-sm text-muted-foreground">narukealpha.github.io/Blog</p>
@@ -320,7 +325,7 @@ function App() {
               </CardHeader>
 
               <CardContent className="min-h-0 flex-1 p-3">
-                <div className="h-full overflow-hidden rounded-[1.4rem] border border-border bg-white">
+                <div className="h-full overflow-hidden rounded-[1.4rem] border border-white/25 bg-white/50">
                   <iframe
                     key={frameKey}
                     src={BLOG_URL}
@@ -334,7 +339,7 @@ function App() {
           ) : null}
 
           {view === "post" ? (
-            <Card className="bg-card/95">
+            <Card>
               <CardHeader className="pb-4">
                 <div className="flex items-center gap-3">
                   <Badge>Post</Badge>
@@ -379,7 +384,7 @@ function App() {
           ) : null}
 
           {view === "bookmarks" ? (
-            <Card className="bg-card/95">
+            <Card>
               <CardHeader className="pb-4">
                 <div className="flex items-center gap-3">
                   <Badge>Bookmarks</Badge>
@@ -418,15 +423,16 @@ function App() {
           ) : null}
         </main>
 
-        <aside className="flex min-h-0 flex-col gap-4 xl:max-h-[calc(100vh-2rem)]">
-          <Card className="bg-card/95">
+        {/* Right sidebar */}
+        <aside className="titlebar-no-drag flex min-h-0 flex-col gap-4 xl:max-h-[calc(100vh-4rem)]">
+          <Card>
             <CardHeader className="pb-3">
               <CardTitle className="text-base">Latest</CardTitle>
             </CardHeader>
             <CardContent className="grid gap-3 text-sm">
               {snapshot ? (
                 snapshot.rows.map((row) => (
-                  <div key={row.label} className="grid gap-1 rounded-2xl border border-border bg-background/70 px-3 py-2">
+                  <div key={row.label} className="glass-subtle grid gap-1 rounded-2xl px-3 py-2">
                     <span className="text-[11px] uppercase tracking-[0.16em] text-muted-foreground">{row.label}</span>
                     <span className="break-words text-foreground">{row.value}</span>
                   </div>
@@ -437,7 +443,7 @@ function App() {
             </CardContent>
           </Card>
 
-          <Card className="flex min-h-0 flex-1 flex-col bg-card/95">
+          <Card className="flex min-h-0 flex-1 flex-col">
             <CardHeader className="pb-3">
               <CardTitle className="text-base">Activity</CardTitle>
             </CardHeader>
@@ -445,7 +451,7 @@ function App() {
               <div className="grid gap-3">
                 {activity.length ? (
                   activity.map((item) => (
-                    <div key={item.id} className="rounded-2xl border border-border bg-background/75 px-3 py-2.5">
+                    <div key={item.id} className="glass-subtle rounded-2xl px-3 py-2.5">
                       <div className="flex items-center gap-2">
                         <span className={cn("h-2 w-2 rounded-full", activityToneClasses[item.tone])} />
                         <span className="text-sm font-medium text-foreground">{item.title}</span>
