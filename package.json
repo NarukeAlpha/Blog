@@ -3,18 +3,46 @@
   "version": "0.1.0",
   "private": true,
   "type": "module",
-  "main": "electron/main.js",
+  "main": "dist/electron/main.js",
   "scripts": {
-    "start": "electron .",
-    "dev": "electron .",
-    "sync": "node scripts/sync-content.mjs",
-    "check": "node scripts/check.mjs",
-    "test": "node --test"
+    "start": "npm run build && electron .",
+    "dev": "concurrently -k \"npm:dev:renderer\" \"npm:dev:electron\"",
+    "dev:renderer": "vite --host 127.0.0.1 --port 5173",
+    "dev:electron": "wait-on tcp:127.0.0.1:5173 && npm run build:electron && cross-env ELECTRON_RENDERER_URL=http://127.0.0.1:5173 electron .",
+    "sync": "tsx scripts/sync-content.ts",
+    "build": "npm run sync && npm run build:renderer && npm run build:electron",
+    "build:renderer": "vite build",
+    "build:electron": "npm run build:electron:main && npm run build:electron:preload",
+    "build:electron:main": "esbuild electron/main.ts --bundle --platform=node --format=esm --outfile=dist/electron/main.js --external:electron",
+    "build:electron:preload": "esbuild electron/preload.ts --bundle --platform=node --format=cjs --outfile=dist/electron/preload.cjs --external:electron",
+    "check": "npm run sync && tsc --noEmit && npm run build:renderer && npm run build:electron && tsx scripts/check.ts",
+    "test": "tsx --test tests/content.test.ts"
   },
   "dependencies": {
-    "@opencode-ai/sdk": "^1.2.21"
+    "@opencode-ai/sdk": "^1.2.21",
+    "@radix-ui/react-slot": "^1.2.3",
+    "class-variance-authority": "^0.7.1",
+    "clsx": "^2.1.1",
+    "lucide-react": "^0.544.0",
+    "react": "^19.2.0",
+    "react-dom": "^19.2.0",
+    "tailwind-merge": "^3.3.1"
   },
   "devDependencies": {
-    "electron": "^40.8.0"
+    "@types/node": "^25.3.5",
+    "@types/react": "^19.2.14",
+    "@types/react-dom": "^19.2.3",
+    "@vitejs/plugin-react": "^5.1.4",
+    "autoprefixer": "^10.4.27",
+    "concurrently": "^9.2.1",
+    "cross-env": "^10.1.0",
+    "electron": "^40.8.0",
+    "esbuild": "^0.27.3",
+    "postcss": "^8.5.8",
+    "tailwindcss": "^3.4.17",
+    "tsx": "^4.21.0",
+    "typescript": "^5.9.3",
+    "vite": "^7.3.1",
+    "wait-on": "^9.0.4"
   }
 }

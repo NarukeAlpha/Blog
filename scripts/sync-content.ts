@@ -1,5 +1,5 @@
-import { ensureContentFiles, readBookmarks, readPosts } from "../lib/content.js";
-import { syncGeneratedContent } from "../lib/writerside.js";
+import { ensureContentFiles, readBookmarks, readPosts } from "../lib/content";
+import { syncGeneratedContent } from "../lib/writerside";
 
 await ensureContentFiles();
 

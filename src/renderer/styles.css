@@ -1,0 +1,54 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    --background: 38 37% 95%;
+    --foreground: 215 32% 14%;
+    --card: 0 0% 100%;
+    --card-foreground: 215 32% 14%;
+    --border: 35 24% 84%;
+    --input: 35 24% 84%;
+    --muted: 35 24% 90%;
+    --muted-foreground: 215 14% 40%;
+    --accent: 24 76% 53%;
+    --accent-foreground: 0 0% 100%;
+    --primary: 217 32% 18%;
+    --primary-foreground: 0 0% 100%;
+    --secondary: 36 35% 92%;
+    --secondary-foreground: 215 26% 18%;
+    --ring: 24 76% 53%;
+    --success: 160 56% 35%;
+    --warning: 33 86% 45%;
+    --destructive: 0 73% 52%;
+    --destructive-foreground: 0 0% 100%;
+  }
+
+  * {
+    @apply border-border;
+  }
+
+  html,
+  body,
+  #root {
+    min-height: 100%;
+  }
+
+  body {
+    @apply bg-background text-foreground antialiased;
+    background-image:
+      radial-gradient(circle at top left, rgba(214, 138, 75, 0.12), transparent 30%),
+      radial-gradient(circle at bottom right, rgba(35, 68, 118, 0.08), transparent 26%);
+  }
+
+  button,
+  input,
+  textarea {
+    font: inherit;
+  }
+
+  iframe {
+    color-scheme: light;
+  }
+}

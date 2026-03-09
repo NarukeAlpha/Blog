@@ -1,4 +1,4 @@
-export function formatDate(isoString) {
+export function formatDate(isoString: string) {
   return new Intl.DateTimeFormat("en", {
     month: "short",
     day: "numeric",
@@ -6,7 +6,7 @@ export function formatDate(isoString) {
   }).format(new Date(isoString));
 }
 
-export function summarize(text, maxLength = 180) {
+export function summarize(text: string, maxLength = 180) {
   const flattened = String(text)
     .replace(/`/g, "")
     .replace(/[#>*_\-]/g, " ")
@@ -20,7 +20,7 @@ export function summarize(text, maxLength = 180) {
   return `${flattened.slice(0, maxLength).trimEnd()}...`;
 }
 
-export function escapeHtml(value) {
+export function escapeHtml(value: string) {
   return String(value)
     .replace(/&/g, "&amp;")
     .replace(/</g, "&lt;")
@@ -29,7 +29,7 @@ export function escapeHtml(value) {
     .replace(/'/g, "&#39;");
 }
 
-export function escapeMarkdownInline(value) {
+export function escapeMarkdownInline(value: string) {
   return String(value)
     .replace(/\\/g, "\\\\")
     .replace(/\[/g, "\\[")
@@ -41,11 +41,11 @@ export function escapeMarkdownInline(value) {
     .replace(/`/g, "\\`");
 }
 
-export function normalizeBody(text) {
+export function normalizeBody(text: string) {
   return String(text).replace(/\r\n/g, "\n").trim();
 }
 
-export function parseTags(value) {
+export function parseTags(value: string) {
   return String(value)
     .split(",")
     .map((tag) => tag.trim())

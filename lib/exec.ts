@@ -1,7 +1,9 @@
 import { spawn } from "node:child_process";
 
-export function runCommand(command, args, options = {}) {
-  return new Promise((resolve, reject) => {
+import type { CommandFailure, CommandOptions, CommandResult } from "./types";
+
+export function runCommand(command: string, args: string[], options: CommandOptions = {}) {
+  return new Promise<CommandResult>((resolve, reject) => {
     const child = spawn(command, args, {
       cwd: options.cwd,
       env: options.env,
@@ -30,7 +32,7 @@ export function runCommand(command, args, options = {}) {
         return;
       }
 
-      const error = new Error(stderr.trim() || stdout.trim() || `${command} exited with code ${code}`);
+      const error = new Error(stderr.trim() || stdout.trim() || `${command} exited with code ${code}`) as CommandFailure;
       error.code = code;
       error.stdout = stdout;
       error.stderr = stderr;

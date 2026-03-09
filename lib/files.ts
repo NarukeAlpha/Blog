@@ -1,17 +1,21 @@
 import { mkdir, readFile, writeFile } from "node:fs/promises";
 import path from "node:path";
 
-export async function readTextFile(filePath) {
+function isNodeError(error: unknown): error is NodeJS.ErrnoException {
+  return error instanceof Error;
+}
+
+export async function readTextFile(filePath: string) {
   return readFile(filePath, "utf8");
 }
 
-export async function writeTextFileIfChanged(filePath, content) {
-  let current = null;
+export async function writeTextFileIfChanged(filePath: string, content: string) {
+  let current: string | null = null;
 
   try {
     current = await readFile(filePath, "utf8");
   } catch (error) {
-    if (error.code !== "ENOENT") {
+    if (!isNodeError(error) || error.code !== "ENOENT") {
       throw error;
     }
   }
@@ -25,12 +29,12 @@ export async function writeTextFileIfChanged(filePath, content) {
   return true;
 }
 
-export async function readJsonFile(filePath, fallback) {
+export async function readJsonFile<T>(filePath: string, fallback: T) {
   try {
     const content = await readFile(filePath, "utf8");
-    return JSON.parse(content);
+    return JSON.parse(content) as T;
   } catch (error) {
-    if (error.code === "ENOENT") {
+    if (isNodeError(error) && error.code === "ENOENT") {
       return fallback;
     }
 
@@ -38,6 +42,6 @@ export async function readJsonFile(filePath, fallback) {
   }
 }
 
-export async function writeJsonFileIfChanged(filePath, value) {
+export async function writeJsonFileIfChanged(filePath: string, value: unknown) {
   return writeTextFileIfChanged(filePath, `${JSON.stringify(value, null, 2)}\n`);
 }

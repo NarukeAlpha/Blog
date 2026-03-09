@@ -1,6 +1,6 @@
 import path from "node:path";
 
-import { writeTextFileIfChanged } from "./files.js";
+import { writeTextFileIfChanged } from "./files";
 import {
   BOOKMARKS_TOPIC_FILE,
   HOME_TOPIC_FILE,
@@ -8,34 +8,29 @@ import {
   JOURNAL_TOPIC_FILE,
   POSTS_DIR,
   WORKFLOW_TOPIC_FILE
-} from "./paths.js";
-import {
-  escapeHtml,
-  escapeMarkdownInline,
-  formatDate,
-  normalizeBody,
-  summarize
-} from "./text.js";
+} from "./paths";
+import { escapeHtml, escapeMarkdownInline, formatDate, normalizeBody, summarize } from "./text";
+import type { BookmarkRecord, CreatePostRecordInput, PostRecord } from "./types";
 
-export function getPostTopicFile(post) {
+export function getPostTopicFile(post: Pick<PostRecord, "slug">) {
   return path.join(POSTS_DIR, `${post.slug}.md`);
 }
 
-function renderTags(tags) {
-  if (!tags?.length) {
+function renderTags(tags: string[]) {
+  if (!tags.length) {
     return "_No tags yet._";
   }
 
   return tags.map((tag) => `\`${escapeMarkdownInline(tag)}\``).join(" ");
 }
 
-export function renderPostTopic(post) {
+export function renderPostTopic(post: PostRecord) {
   const summary = post.summary ? `${post.summary.trim()}\n\n` : "";
 
   return `# ${post.title}\n\n> Published ${formatDate(post.publishedAt)}\n> Tags ${renderTags(post.tags)}\n\n${summary}${normalizeBody(post.body)}\n`;
 }
 
-export function renderHomePage(posts, bookmarks) {
+export function renderHomePage(posts: PostRecord[], bookmarks: BookmarkRecord[]) {
   const latestPosts = posts.slice(0, 3);
   const latestBookmarks = bookmarks.slice(0, 3);
 
@@ -50,17 +45,14 @@ export function renderHomePage(posts, bookmarks) {
 
   const bookmarksBlock = latestBookmarks.length
     ? latestBookmarks
-        .map(
-          (bookmark) =>
-            `- [${escapeMarkdownInline(bookmark.title)}](${bookmark.url}) - ${bookmark.description}`
-        )
+        .map((bookmark) => `- [${escapeMarkdownInline(bookmark.title)}](${bookmark.url}) - ${bookmark.description}`)
         .join("\n")
     : "- No bookmarks yet. Add one from the studio and OpenCode will research it for you.";
 
   return `# Signal & Static\n\nA Writerside blog that publishes from a desktop studio straight into GitHub Pages.\n\n## What lives here\n\n- Journal posts become Writerside topics the moment they are published from the Electron app.\n- Git pushes trigger a GitHub Actions workflow that rebuilds the public site.\n- Bookmarks are researched through OpenCode before they land in the reading queue.\n\n## Latest posts\n\n${postsBlock}\n## Reading queue\n\n${bookmarksBlock}\n\nSee the full [Journal](journal.md), [Bookmarks](bookmarks.md), and [Publishing workflow](workflow.md).\n`;
 }
 
-export function renderJournalPage(posts) {
+export function renderJournalPage(posts: PostRecord[]) {
   const archive = posts.length
     ? posts
         .map(
@@ -73,7 +65,7 @@ export function renderJournalPage(posts) {
   return `# Journal\n\nEvery entry here starts inside the desktop studio and lands as a Writerside topic.\n\n## Archive\n\n${archive}`;
 }
 
-export function renderBookmarksPage(bookmarks) {
+export function renderBookmarksPage(bookmarks: BookmarkRecord[]) {
   const table = bookmarks.length
     ? `<table>\n  <tr><th>Added</th><th>Bookmark</th><th>Why read it</th><th>Preview</th></tr>\n${bookmarks
         .map((bookmark) => {
@@ -85,9 +77,7 @@ export function renderBookmarksPage(bookmarks) {
 
           return `  <tr><td>${escapeHtml(formatDate(bookmark.addedAt))}</td><td><a href="${escapeHtml(
             bookmark.url
-          )}">${escapeHtml(bookmark.title)}</a>${source}</td><td>${escapeHtml(
-            bookmark.description
-          )}</td><td>${preview}</td></tr>`;
+          )}">${escapeHtml(bookmark.title)}</a>${source}</td><td>${escapeHtml(bookmark.description)}</td><td>${preview}</td></tr>`;
         })
         .join("\n")}\n</table>`
     : "No bookmarks yet. Use the studio to research and publish your first reading recommendation.";
@@ -99,10 +89,8 @@ export function renderWorkflowPage() {
   return `# Publishing workflow\n\n## Desktop authoring\n\n- Write a post in the Electron studio and the app saves it into \`content/posts.json\` plus a Writerside topic file.\n- Paste a bookmark and the app asks OpenCode for a title, thumbnail, source, and short description.\n- Generated landing pages stay in sync through the shared content generator.\n\n## GitHub delivery\n\n- The studio stages the affected files, creates a focused commit, and pushes the branch.\n- A GitHub Actions workflow builds the \`Writerside/hi\` instance and deploys it to GitHub Pages.\n\n## Manual maintenance\n\n- Run \`npm run sync\` if you edit the JSON content directly and want to regenerate the Writerside pages.\n- Run \`npm run check\` and \`npm test\` before committing larger structural changes to the studio.\n`;
 }
 
-export function renderInstanceTree(posts) {
-  const postNodes = posts
-    .map((post) => `        <toc-element topic="${post.topicPath}"/>`)
-    .join("\n");
+export function renderInstanceTree(posts: Array<Pick<PostRecord, "topicPath">>) {
+  const postNodes = posts.map((post) => `        <toc-element topic="${post.topicPath}"/>`).join("\n");
 
   const childrenBlock = postNodes ? `\n${postNodes}` : "";
 
@@ -123,10 +111,10 @@ export function renderInstanceTree(posts) {
 `;
 }
 
-export async function syncGeneratedContent({ posts, bookmarks }) {
-  const changedFiles = [];
+export async function syncGeneratedContent({ posts, bookmarks }: { posts: PostRecord[]; bookmarks: BookmarkRecord[] }) {
+  const changedFiles: string[] = [];
 
-  const generatedFiles = [
+  const generatedFiles: Array<[string, string]> = [
     [HOME_TOPIC_FILE, renderHomePage(posts, bookmarks)],
     [JOURNAL_TOPIC_FILE, renderJournalPage(posts)],
     [BOOKMARKS_TOPIC_FILE, renderBookmarksPage(bookmarks)],
@@ -149,7 +137,7 @@ export async function syncGeneratedContent({ posts, bookmarks }) {
   return changedFiles;
 }
 
-export function createPostRecord({ title, summary, body, tags, slug, publishedAt }) {
+export function createPostRecord({ title, summary, body, tags, slug, publishedAt }: CreatePostRecordInput): PostRecord {
   return {
     slug,
     title: title.trim(),

@@ -1,23 +1,50 @@
-import { spawn } from "node:child_process";
+import { spawn, type ChildProcess } from "node:child_process";
 
 import { createOpencodeClient } from "@opencode-ai/sdk";
 
-import { OPENCODE_BASE_URL, OPENCODE_PORT, ROOT_DIR } from "./paths.js";
+import { OPENCODE_BASE_URL, OPENCODE_PORT, ROOT_DIR } from "./paths";
+import type { BookmarkResearchResult, OpencodeServerStatus } from "./types";
 
-let opencodeProcess = null;
-let startupPromise = null;
+interface HealthResponse {
+  healthy?: boolean;
+}
+
+interface PromptEnvelope<T> {
+  data?: T;
+}
+
+interface SessionInfoResponse {
+  id: string;
+}
+
+interface PromptResponse {
+  info?: {
+    error?: {
+      message?: string;
+    };
+    structured_output?: {
+      title?: string;
+      description?: string;
+      thumbnailUrl?: string;
+      source?: string;
+    };
+  };
+}
+
+let opencodeProcess: ChildProcess | null = null;
+let startupPromise: Promise<OpencodeServerStatus> | null = null;
 
 const client = createOpencodeClient({
   baseUrl: OPENCODE_BASE_URL,
   throwOnError: true
 });
 
-function unwrap(response) {
+function unwrap<T>(response: PromptEnvelope<T> | T | undefined | null) {
   if (response && typeof response === "object" && "data" in response && response.data) {
     return response.data;
   }
 
-  return response;
+  return response as T | undefined;
 }
 
 async function getHealth() {
@@ -27,7 +54,7 @@ async function getHealth() {
     return null;
   }
 
-  return response.json();
+  return (await response.json()) as HealthResponse;
 }
 
 export async function isOpencodeHealthy() {
@@ -53,7 +80,7 @@ async function waitForServer(timeoutMs = 15000) {
   throw new Error("OpenCode server did not become healthy in time.");
 }
 
-export async function ensureOpencodeServer() {
+export async function ensureOpencodeServer(): Promise<OpencodeServerStatus> {
   if (await isOpencodeHealthy()) {
     return {
       endpoint: OPENCODE_BASE_URL,
@@ -65,7 +92,7 @@ export async function ensureOpencodeServer() {
     return startupPromise;
   }
 
-  startupPromise = new Promise((resolve, reject) => {
+  startupPromise = new Promise<OpencodeServerStatus>((resolve, reject) => {
     opencodeProcess = spawn("opencode", ["serve", "--port", String(OPENCODE_PORT), "--hostname", "127.0.0.1"], {
       cwd: ROOT_DIR,
       windowsHide: true,
@@ -75,7 +102,7 @@ export async function ensureOpencodeServer() {
     let stderr = "";
     let settled = false;
 
-    const fail = (error) => {
+    const fail = (error: unknown) => {
       if (settled) {
         return;
       }
@@ -84,7 +111,7 @@ export async function ensureOpencodeServer() {
       reject(error instanceof Error ? error : new Error(String(error)));
     };
 
-    opencodeProcess.stderr.on("data", (chunk) => {
+    opencodeProcess.stderr?.on("data", (chunk) => {
       stderr += chunk.toString();
     });
 
@@ -101,7 +128,7 @@ export async function ensureOpencodeServer() {
       opencodeProcess = null;
     });
 
-    waitForServer()
+    void waitForServer()
       .then(() => {
         if (settled) {
           return;
@@ -113,7 +140,7 @@ export async function ensureOpencodeServer() {
           startedByApp: true
         });
       })
-      .catch((error) => {
+      .catch((error: Error) => {
         fail(new Error(stderr.trim() ? `${error.message} ${stderr.trim()}` : error.message));
       });
   });
@@ -125,7 +152,7 @@ export async function ensureOpencodeServer() {
   }
 }
 
-function buildBookmarkPrompt(url, note) {
+function buildBookmarkPrompt(url: string, note: string) {
   const noteBlock = note ? `\nAdditional context from the user: ${note}\n` : "\n";
 
   return `Investigate this bookmark for a personal reading queue.${noteBlock}
@@ -134,18 +161,22 @@ URL: ${url}
 Return accurate metadata only. Prefer the page's canonical title and site/source name. If the page exposes an image, prefer the absolute Open Graph image URL. Keep the description to one or two concise sentences and do not invent unavailable details.`;
 }
 
-export async function researchBookmark(url, note = "") {
+export async function researchBookmark(url: string, note = ""): Promise<BookmarkResearchResult> {
   const server = await ensureOpencodeServer();
-  const createdSession = unwrap(
-    await client.session.create({
+  const createdSession = unwrap<SessionInfoResponse>(
+    (await (client.session.create as (...args: unknown[]) => Promise<unknown>)({
       body: {
         title: `Bookmark research: ${url}`
       }
-    })
+    })) as PromptEnvelope<SessionInfoResponse>
   );
 
-  const response = unwrap(
-    await client.session.prompt({
+  if (!createdSession?.id) {
+    throw new Error("OpenCode could not create a bookmark session.");
+  }
+
+  const response = unwrap<PromptResponse>(
+    (await (client.session.prompt as (...args: unknown[]) => Promise<unknown>)({
       path: { id: createdSession.id },
       body: {
         parts: [{ type: "text", text: buildBookmarkPrompt(url, note) }],
@@ -176,7 +207,7 @@ export async function researchBookmark(url, note = "") {
           }
         }
       }
-    })
+    })) as PromptEnvelope<PromptResponse>
   );
 
   if (response?.info?.error) {

@@ -1,16 +1,17 @@
-import { ensureContentFiles, readBookmarks, readPosts, writeBookmarks, writePosts } from "./content.js";
-import { publishFiles } from "./git.js";
-import { BOOKMARKS_DATA_FILE, POSTS_DATA_FILE } from "./paths.js";
-import { createUniqueSlug } from "./slug.js";
-import { researchBookmark } from "./opencode.js";
-import { parseTags } from "./text.js";
-import { createPostRecord, syncGeneratedContent } from "./writerside.js";
+import { ensureContentFiles, readBookmarks, readPosts, writeBookmarks, writePosts } from "./content";
+import { publishFiles } from "./git";
+import { BOOKMARKS_DATA_FILE, POSTS_DATA_FILE } from "./paths";
+import { researchBookmark } from "./opencode";
+import { createUniqueSlug } from "./slug";
+import { parseTags } from "./text";
+import type { BookmarkPublishPayload, BookmarkPublishResult, BookmarkRecord, PostPublishPayload, PostPublishResult } from "./types";
+import { createPostRecord, syncGeneratedContent } from "./writerside";
 
-function dedupeFiles(filePaths) {
+function dedupeFiles(filePaths: string[]) {
   return [...new Set(filePaths)];
 }
 
-export async function publishPostDraft(payload) {
+export async function publishPostDraft(payload: PostPublishPayload): Promise<PostPublishResult> {
   const title = String(payload.title || "").trim();
   const body = String(payload.body || "").trim();
 
@@ -66,12 +67,12 @@ export async function publishPostDraft(payload) {
       pushed: false,
       files,
       post,
-      warning: error.message
+      warning: error instanceof Error ? error.message : String(error)
     };
   }
 }
 
-export async function publishBookmarkLink(payload) {
+export async function publishBookmarkLink(payload: BookmarkPublishPayload): Promise<BookmarkPublishResult> {
   const rawUrl = String(payload.url || "").trim();
   const note = String(payload.note || "").trim();
 
@@ -79,7 +80,7 @@ export async function publishBookmarkLink(payload) {
     throw new Error("Bookmarks need a URL.");
   }
 
-  let normalizedUrl;
+  let normalizedUrl: string;
 
   try {
     const parsed = new URL(rawUrl);
@@ -90,7 +91,7 @@ export async function publishBookmarkLink(payload) {
 
     normalizedUrl = parsed.toString();
   } catch (error) {
-    throw new Error(error.message || "That bookmark URL is not valid.");
+    throw new Error(error instanceof Error ? error.message : "That bookmark URL is not valid.");
   }
 
   await ensureContentFiles();
@@ -98,7 +99,7 @@ export async function publishBookmarkLink(payload) {
   const metadata = await researchBookmark(normalizedUrl, note);
   const posts = await readPosts();
   const bookmarks = await readBookmarks();
-  const nextBookmark = {
+  const nextBookmark: BookmarkRecord = {
     url: normalizedUrl,
     title: metadata.title,
     description: metadata.description,
@@ -138,7 +139,7 @@ export async function publishBookmarkLink(payload) {
       pushed: false,
       files,
       bookmark: nextBookmark,
-      warning: error.message
+      warning: error instanceof Error ? error.message : String(error)
     };
   }
 }

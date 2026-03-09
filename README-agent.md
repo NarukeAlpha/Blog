@@ -1,6 +1,6 @@
-# Writerside Blog Studio
+# Writerside Studio
 
-This repo turns Writerside into a personal blog and adds a small Electron studio for one-click publishing.
+This repo turns Writerside into a personal blog and adds an Electron studio built with React, TypeScript, Tailwind, and shadcn-style UI components.
 
 ## What it does
 
@@ -11,8 +11,9 @@ This repo turns Writerside into a personal blog and adds a small Electron studio
 
 ## Project layout
 
-- `electron/` - desktop studio UI and IPC bridge.
-- `lib/` - publishing, Writerside generation, git, and OpenCode services.
+- `electron/` - Electron main process and preload bridge.
+- `src/renderer/` - React renderer, UI components, and styles.
+- `lib/` - TypeScript publishing, Writerside generation, git, and OpenCode services.
 - `content/` - canonical app data for posts and bookmarks.
 - `Writerside/` - static site source built by JetBrains Writerside.
 - `.github/workflows/` - GitHub Pages deployment pipeline.
@@ -23,13 +24,20 @@ This repo turns Writerside into a personal blog and adds a small Electron studio
 2. Install the OpenCode CLI and configure a model/provider so bookmark research can run.
 3. Initialize the folder as a git repo, add your GitHub remote, and make sure normal `git push` works locally.
 4. In the GitHub repository settings, enable GitHub Pages and choose `GitHub Actions` as the source.
-5. Launch the studio with `npm start`.
+5. Launch the studio in dev mode with `npm run dev`, or run the production build locally with `npm start`.
 
 ## Helpful scripts
 
 - `npm run sync` regenerates Writerside pages from `content/`.
-- `npm run check` syntax-checks the Electron and library code, then verifies generated site files.
+- `npm run build` creates the Vite renderer bundle and the Electron main/preload bundles in `dist/`.
+- `npm run check` type-checks the app, builds it, and verifies generated site files.
 - `npm test` runs a small unit test suite for slugs and Writerside page generation.
+
+## Studio layout
+
+- Left rail: dashboard, post, and bookmark navigation.
+- Center: embedded `narukealpha.github.io/Blog` view or the active editor.
+- Right rail: compact latest-action and activity history.
 
 ## Publishing flow
 

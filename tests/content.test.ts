@@ -1,8 +1,8 @@
-import test from "node:test";
 import assert from "node:assert/strict";
+import test from "node:test";
 
-import { createUniqueSlug, slugify } from "../lib/slug.js";
-import { renderBookmarksPage, renderHomePage, renderInstanceTree, renderJournalPage } from "../lib/writerside.js";
+import { createUniqueSlug, slugify } from "../lib/slug";
+import { renderBookmarksPage, renderHomePage, renderInstanceTree, renderJournalPage } from "../lib/writerside";
 
 test("slugify creates readable ASCII slugs", () => {
   assert.equal(slugify(" Hello, Writerside World! "), "hello-writerside-world");
@@ -16,8 +16,11 @@ test("home page links to generated post topics", () => {
   const page = renderHomePage(
     [
       {
+        slug: "welcome",
         title: "Welcome",
         summary: "An intro.",
+        body: "",
+        tags: [],
         topicPath: "posts/welcome.md",
         publishedAt: "2026-03-08T12:00:00.000Z"
       }
@@ -31,8 +34,10 @@ test("home page links to generated post topics", () => {
 test("journal page contains post summaries", () => {
   const page = renderJournalPage([
     {
+      slug: "dispatch",
       title: "Dispatch",
       summary: "A field note.",
+      body: "",
       topicPath: "posts/dispatch.md",
       publishedAt: "2026-03-08T12:00:00.000Z",
       tags: ["notes"]

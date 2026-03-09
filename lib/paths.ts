@@ -1,10 +1,57 @@
+import { existsSync } from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
-export const ROOT_DIR = path.resolve(__dirname, "..");
+function looksLikeWorkspace(directory: string) {
+  return existsSync(path.join(directory, "Writerside")) && existsSync(path.join(directory, "content"));
+}
+
+function resolveWorkspaceRoot() {
+  const envRoot = process.env.STUDIO_WORKSPACE_DIR;
+
+  if (envRoot && looksLikeWorkspace(path.resolve(envRoot))) {
+    return path.resolve(envRoot);
+  }
+
+  let current = process.cwd();
+
+  while (true) {
+    if (looksLikeWorkspace(current)) {
+      return current;
+    }
+
+    const parent = path.dirname(current);
+
+    if (parent === current) {
+      break;
+    }
+
+    current = parent;
+  }
+
+  current = __dirname;
+
+  while (true) {
+    if (looksLikeWorkspace(current)) {
+      return current;
+    }
+
+    const parent = path.dirname(current);
+
+    if (parent === current) {
+      break;
+    }
+
+    current = parent;
+  }
+
+  return path.resolve(__dirname, "..");
+}
+
+export const ROOT_DIR = resolveWorkspaceRoot();
 export const CONTENT_DIR = path.join(ROOT_DIR, "content");
 export const WRITERSIDE_DIR = path.join(ROOT_DIR, "Writerside");
 export const TOPICS_DIR = path.join(WRITERSIDE_DIR, "topics");
