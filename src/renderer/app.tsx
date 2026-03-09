@@ -17,7 +17,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Separator } from "@/components/ui/separator";
 import { Textarea } from "@/components/ui/textarea";
-import type { BookmarkPublishResult, PostPublishResult, StudioBridge, StudioStatus } from "@/lib/studio";
+import type { StudioBridge, StudioStatus } from "@/lib/studio";
 import { cn } from "@/lib/utils";
 
 const BLOG_URL = "https://narukealpha.github.io/Blog/";
@@ -33,15 +33,6 @@ interface ActivityItem {
   at: string;
 }
 
-interface SnapshotRow {
-  label: string;
-  value: string;
-}
-
-interface ActionSnapshot {
-  title: string;
-  rows: SnapshotRow[];
-}
 
 const navItems: Array<{ key: ViewKey; label: string; icon: typeof Globe }> = [
   { key: "dashboard", label: "Dashboard", icon: Globe },
@@ -76,27 +67,6 @@ function shortenPath(filePath: string) {
   return parts.slice(-3).join("/");
 }
 
-function createPostSnapshot(result: PostPublishResult): ActionSnapshot {
-  return {
-    title: result.pushed ? "Post pushed" : "Post saved",
-    rows: [
-      { label: "Title", value: result.post.title },
-      { label: "Topic", value: result.post.topicPath },
-      { label: "Git", value: result.pushed ? result.git?.branch ?? "pushed" : result.warning ?? "local" }
-    ]
-  };
-}
-
-function createBookmarkSnapshot(result: BookmarkPublishResult): ActionSnapshot {
-  return {
-    title: result.pushed ? "Bookmark pushed" : "Bookmark saved",
-    rows: [
-      { label: "Title", value: result.bookmark.title },
-      { label: "Source", value: result.bookmark.source || "Unknown" },
-      { label: "Git", value: result.pushed ? result.git?.branch ?? "pushed" : result.warning ?? "local" }
-    ]
-  };
-}
 
 function App() {
   const studio = (window.studio as StudioBridge | undefined) ?? undefined;
@@ -105,7 +75,6 @@ function App() {
   const [loadingStatus, setLoadingStatus] = useState(true);
   const [busyView, setBusyView] = useState<ViewKey | null>(null);
   const [frameKey, setFrameKey] = useState(0);
-  const [snapshot, setSnapshot] = useState<ActionSnapshot | null>(null);
   const [activity, setActivity] = useState<ActivityItem[]>([]);
   const [postDraft, setPostDraft] = useState({ title: "", summary: "", tags: "", body: "" });
   const [bookmarkDraft, setBookmarkDraft] = useState({ url: "", note: "" });
@@ -159,9 +128,6 @@ function App() {
     };
   }, [refreshStatus]);
 
-  const repoBadgeVariant = status?.gitReady ? "success" : "outline";
-  const opencodeBadgeVariant = status?.opencodeReady ? "success" : "warning";
-
   const metrics = useMemo(
     () => [
       { label: "Posts", value: String(status?.postCount ?? 0) },
@@ -181,7 +147,6 @@ function App() {
       }
 
       const result = await studio.publishPost(postDraft);
-      setSnapshot(createPostSnapshot(result));
       pushActivity(result.pushed ? "Post pushed" : "Post saved", result.post.title, result.pushed ? "success" : "warning");
 
       if (result.warning) {
@@ -194,7 +159,6 @@ function App() {
       await refreshStatus();
     } catch (error) {
       const message = getErrorMessage(error);
-      setSnapshot({ title: "Post failed", rows: [{ label: "Error", value: message }] });
       pushActivity("Post failed", message, "error");
     } finally {
       setBusyView(null);
@@ -212,7 +176,6 @@ function App() {
       }
 
       const result = await studio.publishBookmark(bookmarkDraft);
-      setSnapshot(createBookmarkSnapshot(result));
       pushActivity(
         result.pushed ? "Bookmark pushed" : "Bookmark saved",
         result.bookmark.title,
@@ -229,7 +192,6 @@ function App() {
       await refreshStatus();
     } catch (error) {
       const message = getErrorMessage(error);
-      setSnapshot({ title: "Bookmark failed", rows: [{ label: "Error", value: message }] });
       pushActivity("Bookmark failed", message, "error");
     } finally {
       setBusyView(null);
@@ -241,7 +203,7 @@ function App() {
       {/* Titlebar drag region */}
       <div className="titlebar-drag fixed inset-x-0 top-0 z-50 h-12" />
 
-      <div className="grid min-h-screen grid-cols-1 gap-4 p-4 pt-12 xl:grid-cols-[240px_minmax(0,1fr)_300px]">
+      <div className="grid min-h-screen grid-cols-1 gap-4 p-4 pt-12 xl:grid-cols-[240px_minmax(0,1fr)_220px]">
         {/* Sidebar */}
         <Card className="titlebar-no-drag flex h-full flex-col glass-heavy xl:max-h-[calc(100vh-4rem)]">
           <CardHeader className="space-y-4 pb-4">
@@ -253,10 +215,6 @@ function App() {
               </div>
             </div>
 
-            <div className="grid gap-2">
-              <Badge variant={repoBadgeVariant}>Repo {status?.gitReady ? "ready" : "local"}</Badge>
-              <Badge variant={opencodeBadgeVariant}>OpenCode {status?.opencodeReady ? "live" : "idle"}</Badge>
-            </div>
           </CardHeader>
 
           <CardContent className="flex flex-1 flex-col gap-5">
@@ -295,9 +253,9 @@ function App() {
                 <FolderGit2 className="h-4 w-4" />
                 <span className="truncate">{status ? shortenPath(status.rootDir) : loadingStatus ? "Loading" : "Unavailable"}</span>
               </div>
-              <div className="flex items-center gap-2">
+              <div className={cn("flex items-center gap-2", status?.opencodeReady ? "text-green-600" : "text-amber-600")} style={{ opacity: 1 }}>
                 {status?.opencodeReady ? <Wifi className="h-4 w-4" /> : <WifiOff className="h-4 w-4" />}
-                <span>{status?.opencodeReady ? "Agent online" : "Agent on demand"}</span>
+                <span className="font-medium">{status?.opencodeReady ? "Agent online" : "Agent offline"}</span>
               </div>
             </div>
           </CardContent>
@@ -425,24 +383,6 @@ function App() {
 
         {/* Right sidebar */}
         <aside className="titlebar-no-drag flex min-h-0 flex-col gap-4 xl:max-h-[calc(100vh-4rem)]">
-          <Card>
-            <CardHeader className="pb-3">
-              <CardTitle className="text-base">Latest</CardTitle>
-            </CardHeader>
-            <CardContent className="grid gap-3 text-sm">
-              {snapshot ? (
-                snapshot.rows.map((row) => (
-                  <div key={row.label} className="glass-subtle grid gap-1 rounded-2xl px-3 py-2">
-                    <span className="text-[11px] uppercase tracking-[0.16em] text-muted-foreground">{row.label}</span>
-                    <span className="break-words text-foreground">{row.value}</span>
-                  </div>
-                ))
-              ) : (
-                <p className="text-sm text-muted-foreground">No actions yet.</p>
-              )}
-            </CardContent>
-          </Card>
-
           <Card className="flex min-h-0 flex-1 flex-col">
             <CardHeader className="pb-3">
               <CardTitle className="text-base">Activity</CardTitle>

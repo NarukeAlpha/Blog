@@ -11,7 +11,7 @@
     --border: 220 15% 88%;
     --input: 220 15% 90%;
     --muted: 220 14% 93%;
-    --muted-foreground: 220 10% 46%;
+    --muted-foreground: 220 48% 28%;
     --accent: 215 80% 56%;
     --accent-foreground: 0 0% 100%;
     --primary: 220 28% 16%;
@@ -112,7 +112,9 @@
       inset 0 1px 2px rgba(0, 0, 0, 0.03),
       0 0 0 3px hsl(var(--ring) / 0.12);
   }
-
+  .text-muted-foreground {
+    -webkit-text-stroke: 0.3px rgba(0, 0, 0, 0.25);
+  }
   .titlebar-drag {
     -webkit-app-region: drag;
     app-region: drag;
