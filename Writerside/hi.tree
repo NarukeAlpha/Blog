@@ -7,11 +7,6 @@
                  start-page="home.md">
 
     <toc-element topic="home.md"/>
-    <toc-element topic="journal.md">
-        <toc-element topic="posts/tewst5.md"/>
-        <toc-element topic="posts/test2.md"/>
-        <toc-element topic="posts/test-post.md"/>
-        <toc-element topic="posts/welcome-to-the-lab.md"/>
-    </toc-element>
+    <toc-element topic="journal.md"/>
     <toc-element topic="bookmarks.md"/>
 </instance-profile>

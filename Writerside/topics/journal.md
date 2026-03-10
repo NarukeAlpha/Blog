@@ -1,21 +1,35 @@
 # Journal
 
-Every entry here starts inside the desktop studio and lands as a Writerside topic.
+Every entry here starts inside the desktop studio and lands as one running timeline.
 
-## Archive
+## tewst5 {id="tewst5"}
 
-### [tewst5](posts/tewst5.md)
+_Mar 9, 2026_
 
-Mar 9, 2026
+55tttt
 
-### [test2](posts/test2.md)
+## test2 {id="test2"}
 
-Mar 9, 2026
+_Mar 9, 2026_
 
-### [Test post?](posts/test-post.md)
+test3
 
-Mar 9, 2026
+## Test post? {id="test-post"}
 
-### [Welcome to the Lab](posts/welcome-to-the-lab.md)
+_Mar 9, 2026_
 
-Mar 8, 2026
+this is a test
+
+## Welcome to the Lab {id="welcome-to-the-lab"}
+
+_Mar 8, 2026_
+
+This project turns a documentation stack into a personal publishing system.
+
+### The idea
+
+Write in the desktop studio, save straight into Writerside topics, and let GitHub Pages rebuild the public site after every push.
+
+### What comes next
+
+The same studio can also research bookmarks through OpenCode and drop them into a reading list with a thumbnail and a concise description.

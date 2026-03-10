@@ -22,17 +22,57 @@ export function getPostTopicFile(post: Pick<PostRecord, "slug">) {
   return path.join(POSTS_DIR, `${post.slug}.md`);
 }
 
+function sortPostsNewestFirst(posts: PostRecord[]) {
+  return [...posts].sort((left, right) => Date.parse(right.publishedAt) - Date.parse(left.publishedAt));
+}
+
+function getJournalAnchorPath(post: Pick<PostRecord, "slug">) {
+  return `journal.md#${post.slug}`;
+}
+
+function shiftEmbeddedHeadings(markdown: string) {
+  const lines = normalizeBody(markdown).split("\n");
+  let fenceMarker: string | null = null;
+
+  return lines
+    .map((line) => {
+      const fenceMatch = line.match(/^\s*(```+|~~~+)/);
+
+      if (fenceMatch) {
+        fenceMarker = fenceMarker ? null : fenceMatch[1][0];
+        return line;
+      }
+
+      if (fenceMarker) {
+        return line;
+      }
+
+      const headingMatch = line.match(/^(#{1,5})(\s+.*)$/);
+
+      if (!headingMatch) {
+        return line;
+      }
+
+      return `${headingMatch[1]}#${headingMatch[2]}`;
+    })
+    .join("\n");
+}
+
+function renderJournalEntry(post: PostRecord) {
+  return `## ${escapeMarkdownInline(post.title)} {id="${post.slug}"}\n\n_${formatDate(post.publishedAt)}_\n\n${shiftEmbeddedHeadings(post.body)}`;
+}
+
 export function renderPostTopic(post: PostRecord) {
   return `# ${post.title}\n\n${normalizeBody(post.body)}\n`;
 }
 
 export function renderHomeLatestPosts(posts: PostRecord[]) {
-  const latestPosts = posts.slice(0, 3);
+  const latestPosts = sortPostsNewestFirst(posts).slice(0, 3);
 
   return latestPosts.length
     ? latestPosts
-        .map((post) => `### [${escapeMarkdownInline(post.title)}](${post.topicPath})\n\n${formatDate(post.publishedAt)}\n`)
-        .join("\n")
+        .map((post) => `- [${escapeMarkdownInline(post.title)}](${getJournalAnchorPath(post)}) - ${formatDate(post.publishedAt)}`)
+        .join("\n") + "\n"
     : "No posts yet. The studio is ready when you are.\n";
 }
 
@@ -81,13 +121,11 @@ export async function syncHomePage(posts: PostRecord[]) {
 }
 
 export function renderJournalPage(posts: PostRecord[]) {
-  const archive = posts.length
-    ? posts
-        .map((post) => `### [${escapeMarkdownInline(post.title)}](${post.topicPath})\n\n${formatDate(post.publishedAt)}\n`)
-        .join("\n")
-    : "No posts yet. Publish your first note from the studio to start the archive.\n";
+  const timeline = posts.length
+    ? sortPostsNewestFirst(posts).map((post) => renderJournalEntry(post)).join("\n\n")
+    : "No posts yet. Publish your first note from the studio to start the timeline.\n";
 
-  return `# Journal\n\nEvery entry here starts inside the desktop studio and lands as a Writerside topic.\n\n## Archive\n\n${archive}`;
+  return `# Journal\n\nEvery entry here starts inside the desktop studio and lands as one running timeline.\n\n${timeline}\n`;
 }
 
 export function renderBookmarksPage(bookmarks: BookmarkRecord[]) {
@@ -110,11 +148,7 @@ export function renderBookmarksPage(bookmarks: BookmarkRecord[]) {
   return `# Bookmarks\n\nA running table of links worth another pass. Every row is enriched through OpenCode before it gets published.\n\n${table}\n`;
 }
 
-export function renderInstanceTree(posts: Array<Pick<PostRecord, "topicPath">>) {
-  const postNodes = posts.map((post) => `        <toc-element topic="${post.topicPath}"/>`).join("\n");
-
-  const childrenBlock = postNodes ? `\n${postNodes}` : "";
-
+export function renderInstanceTree() {
   return `<?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE instance-profile
         SYSTEM "https://resources.jetbrains.com/writerside/1.0/product-profile.dtd">
@@ -124,8 +158,7 @@ export function renderInstanceTree(posts: Array<Pick<PostRecord, "topicPath">>) 
                  start-page="home.md">
 
     <toc-element topic="home.md"/>
-    <toc-element topic="journal.md">${childrenBlock}
-    </toc-element>
+    <toc-element topic="journal.md"/>
     <toc-element topic="bookmarks.md"/>
 </instance-profile>
 `;
@@ -143,7 +176,7 @@ export async function syncGeneratedContent({ posts, bookmarks }: { posts: PostRe
   const generatedFiles: Array<[string, string]> = [
     [JOURNAL_TOPIC_FILE, renderJournalPage(posts)],
     [BOOKMARKS_TOPIC_FILE, renderBookmarksPage(bookmarks)],
-    [INSTANCE_TREE_FILE, renderInstanceTree(posts)]
+    [INSTANCE_TREE_FILE, renderInstanceTree()]
   ];
 
   for (const post of posts) {

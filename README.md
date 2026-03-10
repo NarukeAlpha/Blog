@@ -9,3 +9,6 @@ I mean its 100% free hosting of static content.
 
 https://narukealpha.github.io/Blog/home.html
 
+This has like 3 days to work or else im moving the hosting to cloudflare static pages... like any sane 
+person would do. 
+

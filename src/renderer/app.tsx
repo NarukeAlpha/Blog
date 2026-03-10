@@ -20,17 +20,15 @@ import { Textarea } from "@/components/ui/textarea";
 import type { StudioBridge, StudioStatus } from "@/lib/studio";
 import { cn } from "@/lib/utils";
 
-const BLOG_URL = "https://narukealpha.github.io/Blog/";
+const BLOG_URL = "https://narukealpha.github.io/Blog/home.html";
 
 type ViewKey = "dashboard" | "post" | "bookmarks";
-type ActivityTone = "neutral" | "success" | "warning" | "error";
+type NoticeTone = "neutral" | "success" | "warning" | "error";
 
-interface ActivityItem {
-  id: string;
+interface NoticeState {
   title: string;
   detail: string;
-  tone: ActivityTone;
-  at: string;
+  tone: NoticeTone;
 }
 
 
@@ -40,11 +38,11 @@ const navItems: Array<{ key: ViewKey; label: string; icon: typeof Globe }> = [
   { key: "bookmarks", label: "Bookmarks", icon: BookmarkPlus }
 ];
 
-const activityToneClasses: Record<ActivityTone, string> = {
-  neutral: "bg-muted-foreground/40",
-  success: "bg-success",
-  warning: "bg-warning",
-  error: "bg-destructive"
+const noticeToneClasses: Record<NoticeTone, string> = {
+  neutral: "border-white/30 bg-white/40 text-foreground",
+  success: "border-success/20 bg-success/10 text-success",
+  warning: "border-warning/20 bg-warning/10 text-warning",
+  error: "border-destructive/20 bg-destructive/10 text-destructive"
 };
 
 function getErrorMessage(error: unknown) {
@@ -53,13 +51,6 @@ function getErrorMessage(error: unknown) {
   }
 
   return "Something went wrong.";
-}
-
-function formatTime(iso: string) {
-  return new Intl.DateTimeFormat("en", {
-    hour: "numeric",
-    minute: "2-digit"
-  }).format(new Date(iso));
 }
 
 function shortenPath(filePath: string) {
@@ -75,21 +66,12 @@ function App() {
   const [loadingStatus, setLoadingStatus] = useState(true);
   const [busyView, setBusyView] = useState<ViewKey | null>(null);
   const [frameKey, setFrameKey] = useState(0);
-  const [activity, setActivity] = useState<ActivityItem[]>([]);
+  const [notice, setNotice] = useState<NoticeState | null>(null);
   const [postDraft, setPostDraft] = useState({ title: "", body: "" });
   const [bookmarkDraft, setBookmarkDraft] = useState({ url: "", note: "" });
 
-  const pushActivity = useCallback((title: string, detail: string, tone: ActivityTone = "neutral") => {
-    setActivity((current) => [
-      {
-        id: `${Date.now()}-${Math.random().toString(16).slice(2)}`,
-        title,
-        detail,
-        tone,
-        at: new Date().toISOString()
-      },
-      ...current
-    ].slice(0, 14));
+  const showNotice = useCallback((title: string, detail: string, tone: NoticeTone = "neutral") => {
+    setNotice({ title, detail, tone });
   }, []);
 
   const refreshStatus = useCallback(
@@ -101,19 +83,15 @@ function App() {
 
         const next = await studio.getStatus();
         setStatus(next);
-
-        if (!silent) {
-          pushActivity("Ready", `${next.postCount} posts · ${next.bookmarkCount} bookmarks`);
-        }
       } catch (error) {
         if (!silent) {
-          pushActivity("Status", getErrorMessage(error), "error");
+          showNotice("Status", getErrorMessage(error), "error");
         }
       } finally {
         setLoadingStatus(false);
       }
     },
-    [pushActivity]
+    [showNotice, studio]
   );
 
   useEffect(() => {
@@ -136,10 +114,11 @@ function App() {
     [status]
   );
 
+  const previewUrl = useMemo(() => `${BLOG_URL}?preview=${frameKey}`, [frameKey]);
+
   async function handlePostSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     setBusyView("post");
-    pushActivity("Post", "Publishing");
 
     try {
       if (!studio) {
@@ -147,19 +126,20 @@ function App() {
       }
 
       const result = await studio.publishPost(postDraft);
-      pushActivity(result.pushed ? "Post pushed" : "Post saved", result.post.title, result.pushed ? "success" : "warning");
-
-      if (result.warning) {
-        pushActivity("Git", result.warning, "warning");
-      }
+      showNotice(
+        result.pushed ? "Post published" : "Post saved locally",
+        result.pushed
+          ? `${result.post.title} was added to the home feed and the dashboard preview was reloaded.`
+          : `${result.post.title} was saved locally. ${result.warning ?? "The public site updates after the next successful push."}`,
+        result.pushed ? "success" : "warning"
+      );
 
       setPostDraft({ title: "", body: "" });
       setView("dashboard");
       setFrameKey((current) => current + 1);
       await refreshStatus();
     } catch (error) {
-      const message = getErrorMessage(error);
-      pushActivity("Post failed", message, "error");
+      showNotice("Post failed", getErrorMessage(error), "error");
     } finally {
       setBusyView(null);
     }
@@ -168,7 +148,6 @@ function App() {
   async function handleBookmarkSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     setBusyView("bookmarks");
-    pushActivity("Bookmark", "Researching");
 
     try {
       if (!studio) {
@@ -176,23 +155,20 @@ function App() {
       }
 
       const result = await studio.publishBookmark(bookmarkDraft);
-      pushActivity(
-        result.pushed ? "Bookmark pushed" : "Bookmark saved",
-        result.bookmark.title,
+      showNotice(
+        result.pushed ? "Bookmark published" : "Bookmark saved locally",
+        result.pushed
+          ? `${result.bookmark.title} was added to the reading list.`
+          : `${result.bookmark.title} was saved locally. ${result.warning ?? "The public site updates after the next successful push."}`,
         result.pushed ? "success" : "warning"
       );
-
-      if (result.warning) {
-        pushActivity("Git", result.warning, "warning");
-      }
 
       setBookmarkDraft({ url: "", note: "" });
       setView("dashboard");
       setFrameKey((current) => current + 1);
       await refreshStatus();
     } catch (error) {
-      const message = getErrorMessage(error);
-      pushActivity("Bookmark failed", message, "error");
+      showNotice("Bookmark failed", getErrorMessage(error), "error");
     } finally {
       setBusyView(null);
     }
@@ -203,7 +179,7 @@ function App() {
       {/* Titlebar drag region */}
       <div className="titlebar-drag fixed inset-x-0 top-0 z-50 h-12" />
 
-      <div className="grid min-h-screen grid-cols-1 gap-4 p-4 pt-12 xl:grid-cols-[240px_minmax(0,1fr)_220px]">
+      <div className="grid min-h-screen grid-cols-1 gap-4 p-4 pt-12 xl:grid-cols-[240px_minmax(0,1fr)]">
         {/* Sidebar */}
         <Card className="titlebar-no-drag flex h-full flex-col glass-heavy xl:max-h-[calc(100vh-4rem)]">
           <CardHeader className="space-y-4 pb-4">
@@ -262,7 +238,14 @@ function App() {
         </Card>
 
         {/* Main content */}
-        <main className="titlebar-no-drag min-w-0 xl:max-h-[calc(100vh-4rem)]">
+        <main className="titlebar-no-drag flex min-w-0 flex-col gap-4 xl:max-h-[calc(100vh-4rem)]">
+          {notice ? (
+            <div className={cn("glass-subtle rounded-2xl border px-4 py-3", noticeToneClasses[notice.tone])}>
+              <p className="text-sm font-medium">{notice.title}</p>
+              <p className={cn("mt-1 text-sm", notice.tone === "neutral" ? "text-muted-foreground" : "opacity-90")}>{notice.detail}</p>
+            </div>
+          ) : null}
+
           {view === "dashboard" ? (
             <Card className="flex h-full min-h-[70vh] flex-col overflow-hidden">
               <CardHeader className="flex flex-row items-center justify-between gap-3 border-b border-white/20 pb-4">
@@ -286,7 +269,7 @@ function App() {
                 <div className="h-full overflow-hidden rounded-[1.4rem] border border-white/25 bg-white/50">
                   <iframe
                     key={frameKey}
-                    src={BLOG_URL}
+                    src={previewUrl}
                     title="NarukeAlpha Blog"
                     className="h-full min-h-[64vh] w-full"
                     sandbox="allow-forms allow-popups allow-same-origin allow-scripts"
@@ -370,33 +353,6 @@ function App() {
             </Card>
           ) : null}
         </main>
-
-        {/* Right sidebar */}
-        <aside className="titlebar-no-drag flex min-h-0 flex-col gap-4 xl:max-h-[calc(100vh-4rem)]">
-          <Card className="flex min-h-0 flex-1 flex-col">
-            <CardHeader className="pb-3">
-              <CardTitle className="text-base">Activity</CardTitle>
-            </CardHeader>
-            <CardContent className="min-h-0 flex-1 overflow-y-auto pr-2">
-              <div className="grid gap-3">
-                {activity.length ? (
-                  activity.map((item) => (
-                    <div key={item.id} className="glass-subtle rounded-2xl px-3 py-2.5">
-                      <div className="flex items-center gap-2">
-                        <span className={cn("h-2 w-2 rounded-full", activityToneClasses[item.tone])} />
-                        <span className="text-sm font-medium text-foreground">{item.title}</span>
-                        <span className="ml-auto text-[11px] uppercase tracking-[0.16em] text-muted-foreground">{formatTime(item.at)}</span>
-                      </div>
-                      <p className="mt-2 break-words text-sm text-muted-foreground">{item.detail}</p>
-                    </div>
-                  ))
-                ) : (
-                  <p className="text-sm text-muted-foreground">Waiting.</p>
-                )}
-              </div>
-            </CardContent>
-          </Card>
-        </aside>
       </div>
     </div>
   );
