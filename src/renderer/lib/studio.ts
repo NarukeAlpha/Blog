@@ -1,55 +1,50 @@
 export interface StudioStatus {
   rootDir: string;
-  writersideDir: string;
-  gitReady: boolean;
+  thumbnailsDir: string;
+  publicSiteUrl: string | null;
+  convexConfigured: boolean;
+  convexReachable: boolean;
+  writeKeyConfigured: boolean;
   opencodeReady: boolean;
   postCount: number;
   bookmarkCount: number;
-}
-
-export interface GitPublishResult {
-  branch: string;
-  commitMessage: string;
-  commitOutput: string;
-  pushOutput: string;
 }
 
 export interface PostRecord {
   slug: string;
   title: string;
   body: string;
-  publishedAt: string;
-  topicPath: string;
+  excerpt: string;
+  publishedAt: number;
+  readingTimeMinutes: number;
 }
 
 export interface BookmarkRecord {
   url: string;
   title: string;
   description: string;
-  thumbnailUrl: string;
   source: string;
+  thumbnailUrl: string;
   note: string;
-  addedAt: string;
+  addedAt: number;
+}
+
+export interface SiteOverview {
+  postCount: number;
+  bookmarkCount: number;
+  latestPosts: PostRecord[];
+  latestBookmarks: BookmarkRecord[];
 }
 
 export interface PostPublishResult {
   ok: boolean;
-  savedLocal: boolean;
-  pushed: boolean;
-  files: string[];
   post: PostRecord;
-  git?: GitPublishResult;
-  warning?: string;
 }
 
 export interface BookmarkPublishResult {
   ok: boolean;
-  savedLocal: boolean;
-  pushed: boolean;
-  files: string[];
   bookmark: BookmarkRecord;
-  git?: GitPublishResult;
-  warning?: string;
+  thumbnailCachePath?: string | null;
 }
 
 export interface StudioBridge {

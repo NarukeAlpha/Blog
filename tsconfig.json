@@ -20,5 +20,5 @@
     },
     "types": ["vite/client"]
   },
-  "include": ["src/**/*", "electron/**/*.ts", "lib/**/*.ts", "scripts/**/*.ts", "tests/**/*.ts", "vite.config.ts", "tailwind.config.ts"]
+  "include": ["src/**/*", "electron/**/*.ts", "lib/**/*.ts", "scripts/**/*.ts", "tests/**/*.ts", "convex/**/*.ts", "vite.config.ts", "tailwind.config.ts"]
 }

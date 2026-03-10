@@ -3,11 +3,12 @@ import { fileURLToPath } from "node:url";
 
 import { app, BrowserWindow, ipcMain, shell } from "electron";
 
-import { ensureContentFiles, readBookmarks, readPosts } from "../lib/content";
-import { isGitRepository } from "../lib/git";
+import { getPublicSiteUrl, getSiteOverview, hasWriteKey, isConvexConfigured } from "../lib/convex";
+import { loadWorkspaceEnv } from "../lib/env";
 import { isOpencodeHealthy, shutdownOpencodeServer } from "../lib/opencode";
-import { ROOT_DIR, WRITERSIDE_DIR } from "../lib/paths";
+import { ROOT_DIR, THUMBNAILS_DIR } from "../lib/paths";
 import { publishBookmarkLink, publishPostDraft } from "../lib/publish";
+import { ensureWorkspaceDirectories } from "../lib/workspace";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -17,20 +18,34 @@ const rendererUrl = process.env.ELECTRON_RENDERER_URL;
 let mainWindow: BrowserWindow | null = null;
 
 async function getStatusPayload() {
-  const [posts, bookmarks, gitReady, opencodeReady] = await Promise.all([
-    readPosts(),
-    readBookmarks(),
-    isGitRepository(),
-    isOpencodeHealthy()
-  ]);
+  const opencodeReady = await isOpencodeHealthy();
+  const convexConfigured = isConvexConfigured();
+
+  let convexReachable = false;
+  let postCount = 0;
+  let bookmarkCount = 0;
+
+  if (convexConfigured) {
+    try {
+      const overview = await getSiteOverview();
+      convexReachable = true;
+      postCount = overview.postCount;
+      bookmarkCount = overview.bookmarkCount;
+    } catch {
+      convexReachable = false;
+    }
+  }
 
   return {
     rootDir: ROOT_DIR,
-    writersideDir: WRITERSIDE_DIR,
-    gitReady,
+    thumbnailsDir: THUMBNAILS_DIR,
+    publicSiteUrl: getPublicSiteUrl() || null,
+    convexConfigured,
+    convexReachable,
+    writeKeyConfigured: hasWriteKey(),
     opencodeReady,
-    postCount: posts.length,
-    bookmarkCount: bookmarks.length
+    postCount,
+    bookmarkCount
   };
 }
 
@@ -66,7 +81,7 @@ function createWindow() {
     visualEffectState: "active",
     transparent: true,
     backgroundColor: "#00000000",
-    title: "NarukeAlpha Studio",
+    title: "NarukeAlpha Dispatch Studio",
     webPreferences: {
       preload: path.join(__dirname, "preload.cjs"),
       contextIsolation: true,
@@ -89,8 +104,9 @@ function createWindow() {
 }
 
 app.whenReady().then(async () => {
-  app.setName("NarukeAlpha Studio");
-  await ensureContentFiles();
+  app.setName("NarukeAlpha Dispatch Studio");
+  loadWorkspaceEnv();
+  await ensureWorkspaceDirectories();
   registerIpc();
   createWindow();
 

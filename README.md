@@ -1,14 +1,3 @@
-# Writerside Studio
-
-Personal writerside studio style app.  Had a fun idea of utilizing github pages to publish a blog
-that auto updates on post = commit. 
-
-I mean its 100% free hosting of static content.
-
-## Homepage
-
-https://narukealpha.github.io/Blog/home.html
-
-This has like 3 days to work or else im moving the hosting to cloudflare static pages... like any sane 
-person would do. 
-
+Empty readme because i pulled the trigger, moved everything to a normal website + electron studio app both connected
+through a cloud deployment of convex? I mean it just makes sense. imagine commiting a 10k line of json to github for
+an update, I couldn't in good conscience do that lol.

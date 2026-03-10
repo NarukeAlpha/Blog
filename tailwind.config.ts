@@ -26,8 +26,8 @@ const config: Config = {
         "destructive-foreground": "hsl(var(--destructive-foreground))"
       },
       fontFamily: {
-        sans: [".AppleSystemUIFont", "SF Pro Display", "SF Pro Text", "Avenir Next", "ui-sans-serif", "system-ui", "sans-serif"],
-        serif: ["New York", "Iowan Old Style", "Palatino Linotype", "Book Antiqua", "serif"]
+        sans: ["Public Sans", "Avenir Next", "ui-sans-serif", "system-ui", "sans-serif"],
+        serif: ["Fraunces", "Iowan Old Style", "Palatino Linotype", "Book Antiqua", "serif"]
       },
       boxShadow: {
         panel: "0 8px 32px rgba(0, 0, 0, 0.06), 0 1px 3px rgba(0, 0, 0, 0.04)",

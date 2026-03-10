@@ -1,36 +1,38 @@
+@import url("https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,600;9..144,700&family=Public+Sans:wght@400;500;600;700&display=swap");
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
 
 @layer base {
   :root {
-    --background: 220 20% 97%;
-    --foreground: 220 25% 12%;
-    --card: 0 0% 100%;
-    --card-foreground: 220 25% 12%;
-    --border: 220 15% 88%;
-    --input: 220 15% 90%;
-    --muted: 220 14% 93%;
-    --muted-foreground: 220 48% 28%;
-    --accent: 215 80% 56%;
+    --background: 36 45% 94%;
+    --foreground: 194 36% 16%;
+    --card: 36 42% 97%;
+    --card-foreground: 194 36% 16%;
+    --border: 30 28% 84%;
+    --input: 35 35% 88%;
+    --muted: 33 35% 90%;
+    --muted-foreground: 190 20% 34%;
+    --accent: 18 70% 52%;
     --accent-foreground: 0 0% 100%;
-    --primary: 220 28% 16%;
+    --primary: 191 47% 20%;
     --primary-foreground: 0 0% 100%;
-    --secondary: 220 18% 94%;
-    --secondary-foreground: 220 20% 18%;
-    --ring: 215 80% 56%;
-    --success: 160 56% 35%;
-    --warning: 33 86% 45%;
-    --destructive: 0 73% 52%;
+    --secondary: 34 30% 91%;
+    --secondary-foreground: 194 36% 16%;
+    --ring: 18 70% 52%;
+    --success: 154 46% 34%;
+    --warning: 32 86% 43%;
+    --destructive: 0 72% 52%;
     --destructive-foreground: 0 0% 100%;
 
-    --glass-bg: rgba(255, 255, 255, 0.42);
-    --glass-bg-heavy: rgba(255, 255, 255, 0.58);
-    --glass-bg-light: rgba(255, 255, 255, 0.28);
-    --glass-border: rgba(255, 255, 255, 0.55);
-    --glass-border-subtle: rgba(255, 255, 255, 0.35);
-    --glass-highlight: rgba(255, 255, 255, 0.72);
-    --glass-shadow: rgba(0, 0, 0, 0.06);
+    --glass-bg: rgba(255, 250, 241, 0.72);
+    --glass-bg-heavy: rgba(255, 251, 245, 0.84);
+    --glass-bg-light: rgba(255, 255, 255, 0.4);
+    --glass-border: rgba(255, 255, 255, 0.62);
+    --glass-border-subtle: rgba(255, 255, 255, 0.4);
+    --glass-highlight: rgba(255, 255, 255, 0.82);
+    --glass-shadow: rgba(65, 47, 29, 0.09);
     --glass-blur: 28px;
     --glass-blur-heavy: 44px;
   }
@@ -47,7 +49,22 @@
 
   body {
     @apply text-foreground antialiased;
-    background: transparent;
+    background:
+      radial-gradient(circle at top left, rgba(199, 107, 47, 0.16), transparent 30%),
+      radial-gradient(circle at top right, rgba(31, 96, 104, 0.15), transparent 28%),
+      linear-gradient(180deg, #f8f1e6 0%, #f3eadb 45%, #efe3d0 100%);
+    font-family: "Public Sans", sans-serif;
+  }
+
+  body::before {
+    content: "";
+    position: fixed;
+    inset: 0;
+    pointer-events: none;
+    background-image: linear-gradient(rgba(255, 255, 255, 0.18) 1px, transparent 1px), linear-gradient(90deg, rgba(255, 255, 255, 0.16) 1px, transparent 1px);
+    background-size: 72px 72px;
+    mask-image: radial-gradient(circle at center, black 40%, transparent 90%);
+    opacity: 0.35;
   }
 
   button,
@@ -106,15 +123,17 @@
   }
 
   .glass-input:focus {
-    background: rgba(255, 255, 255, 0.6);
+    background: rgba(255, 255, 255, 0.74);
     border-color: hsl(var(--ring) / 0.5);
     box-shadow:
       inset 0 1px 2px rgba(0, 0, 0, 0.03),
       0 0 0 3px hsl(var(--ring) / 0.12);
   }
+
   .text-muted-foreground {
-    -webkit-text-stroke: 0.3px rgba(0, 0, 0, 0.25);
+    -webkit-text-stroke: 0.2px rgba(26, 40, 48, 0.16);
   }
+
   .titlebar-drag {
     -webkit-app-region: drag;
     app-region: drag;
@@ -123,5 +142,107 @@
   .titlebar-no-drag {
     -webkit-app-region: no-drag;
     app-region: no-drag;
+  }
+
+  .site-shell {
+    position: relative;
+    overflow: hidden;
+  }
+
+  .orb {
+    position: absolute;
+    border-radius: 999px;
+    background: radial-gradient(circle, rgba(213, 120, 47, 0.3), transparent 70%);
+    filter: blur(6px);
+    pointer-events: none;
+  }
+
+  .orb-alt {
+    background: radial-gradient(circle, rgba(27, 103, 111, 0.25), transparent 68%);
+  }
+
+  .fade-up {
+    animation: fade-up 0.55s ease both;
+  }
+
+  .ink-prose {
+    color: hsl(var(--foreground));
+  }
+
+  .ink-prose h1,
+  .ink-prose h2,
+  .ink-prose h3,
+  .ink-prose h4 {
+    font-family: "Fraunces", serif;
+    line-height: 1.2;
+    margin-top: 1.75em;
+    margin-bottom: 0.6em;
+  }
+
+  .ink-prose h1:first-child,
+  .ink-prose h2:first-child,
+  .ink-prose h3:first-child {
+    margin-top: 0;
+  }
+
+  .ink-prose p,
+  .ink-prose ul,
+  .ink-prose ol,
+  .ink-prose blockquote {
+    margin: 0 0 1.1em;
+  }
+
+  .ink-prose ul,
+  .ink-prose ol {
+    padding-left: 1.4rem;
+  }
+
+  .ink-prose a {
+    color: hsl(var(--accent));
+    text-decoration: underline;
+    text-decoration-thickness: 1px;
+    text-underline-offset: 0.16em;
+  }
+
+  .ink-prose code {
+    background: rgba(33, 63, 67, 0.08);
+    border-radius: 0.5rem;
+    padding: 0.15rem 0.4rem;
+    font-size: 0.92em;
+  }
+
+  .ink-prose pre {
+    background: rgba(26, 42, 48, 0.92);
+    color: #f8f5ee;
+    border-radius: 1.2rem;
+    padding: 1rem 1.1rem;
+    overflow-x: auto;
+  }
+
+  .ink-prose pre code {
+    background: transparent;
+    padding: 0;
+  }
+
+  .ink-prose blockquote {
+    border-left: 3px solid hsl(var(--accent) / 0.55);
+    padding-left: 1rem;
+    color: hsl(var(--muted-foreground));
+  }
+
+  .ink-prose img {
+    border-radius: 1.4rem;
+  }
+}
+
+@keyframes fade-up {
+  from {
+    opacity: 0;
+    transform: translateY(14px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0);
   }
 }

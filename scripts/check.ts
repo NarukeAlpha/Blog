@@ -1,15 +1,9 @@
 import { access } from "node:fs/promises";
 import path from "node:path";
 
-import {
-  BOOKMARKS_TOPIC_FILE,
-  HOME_TOPIC_FILE,
-  INSTANCE_TREE_FILE,
-  JOURNAL_TOPIC_FILE,
-  ROOT_DIR
-} from "../lib/paths";
+import { DEPLOYMENT_PLAN_FILE, ROOT_DIR, THUMBNAILS_DIR } from "../lib/paths";
 
-for (const requiredFile of [HOME_TOPIC_FILE, JOURNAL_TOPIC_FILE, BOOKMARKS_TOPIC_FILE, INSTANCE_TREE_FILE]) {
+for (const requiredFile of [DEPLOYMENT_PLAN_FILE]) {
   await access(requiredFile);
 }
 
@@ -21,4 +15,6 @@ for (const buildOutput of [
   await access(buildOutput);
 }
 
-console.log("Generated Writerside files and build outputs are present.");
+await access(THUMBNAILS_DIR);
+
+console.log("Renderer bundle, Electron bundle, deployment notes, and thumbnail cache are present.");
