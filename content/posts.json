@@ -1,5 +1,12 @@
 [
   {
+    "slug": "test-post",
+    "title": "Test post?",
+    "body": "this is a test",
+    "publishedAt": "2026-03-10T02:02:46.915Z",
+    "topicPath": "posts/test-post.md"
+  },
+  {
     "slug": "welcome-to-the-lab",
     "title": "Welcome to the Lab",
     "body": "This project turns a documentation stack into a personal publishing system.\n\n## The idea\n\nWrite in the desktop studio, save straight into Writerside topics, and let GitHub Pages rebuild the public site after every push.\n\n## What comes next\n\nThe same studio can also research bookmarks through OpenCode and drop them into a reading list with a thumbnail and a concise description.",

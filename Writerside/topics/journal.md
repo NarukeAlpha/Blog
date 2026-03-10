@@ -4,6 +4,10 @@ Every entry here starts inside the desktop studio and lands as a Writerside topi
 
 ## Archive
 
+### [Test post?](posts/test-post.md)
+
+Mar 9, 2026
+
 ### [Welcome to the Lab](posts/welcome-to-the-lab.md)
 
 Mar 8, 2026

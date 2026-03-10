@@ -5,6 +5,10 @@ This page stays hand-authored, with a small live feed for the newest journal ent
 ## Latest posts
 
 <!-- studio:latest-posts:start -->
+### [Test post?](posts/test-post.md)
+
+Mar 9, 2026
+
 ### [Welcome to the Lab](posts/welcome-to-the-lab.md)
 
 Mar 8, 2026
