@@ -6,20 +6,6 @@ export function formatDate(isoString: string) {
   }).format(new Date(isoString));
 }
 
-export function summarize(text: string, maxLength = 180) {
-  const flattened = String(text)
-    .replace(/`/g, "")
-    .replace(/[#>*_\-]/g, " ")
-    .replace(/\s+/g, " ")
-    .trim();
-
-  if (flattened.length <= maxLength) {
-    return flattened;
-  }
-
-  return `${flattened.slice(0, maxLength).trimEnd()}...`;
-}
-
 export function escapeHtml(value: string) {
   return String(value)
     .replace(/&/g, "&amp;")
@@ -43,11 +29,4 @@ export function escapeMarkdownInline(value: string) {
 
 export function normalizeBody(text: string) {
   return String(text).replace(/\r\n/g, "\n").trim();
-}
-
-export function parseTags(value: string) {
-  return String(value)
-    .split(",")
-    .map((tag) => tag.trim())
-    .filter(Boolean);
 }

@@ -1,9 +1,7 @@
 export interface PostRecord {
   slug: string;
   title: string;
-  summary: string;
   body: string;
-  tags: string[];
   publishedAt: string;
   topicPath: string;
 }
@@ -20,18 +18,14 @@ export interface BookmarkRecord {
 
 export interface CreatePostRecordInput {
   title: string;
-  summary: string;
   body: string;
-  tags: string[];
   slug: string;
   publishedAt: string;
 }
 
 export interface PostPublishPayload {
   title?: string;
-  summary?: string;
   body?: string;
-  tags?: string;
 }
 
 export interface BookmarkPublishPayload {

@@ -1,64 +1,89 @@
 import path from "node:path";
 
-import { writeTextFileIfChanged } from "./files";
+import { readTextFile, writeTextFileIfChanged } from "./files";
 import {
   BOOKMARKS_TOPIC_FILE,
   HOME_TOPIC_FILE,
   INSTANCE_TREE_FILE,
   JOURNAL_TOPIC_FILE,
-  POSTS_DIR,
-  WORKFLOW_TOPIC_FILE
+  POSTS_DIR
 } from "./paths";
-import { escapeHtml, escapeMarkdownInline, formatDate, normalizeBody, summarize } from "./text";
+import { escapeHtml, escapeMarkdownInline, formatDate, normalizeBody } from "./text";
 import type { BookmarkRecord, CreatePostRecordInput, PostRecord } from "./types";
+
+const HOME_LATEST_POSTS_START = "<!-- studio:latest-posts:start -->";
+const HOME_LATEST_POSTS_END = "<!-- studio:latest-posts:end -->";
+
+function isNodeError(error: unknown): error is NodeJS.ErrnoException {
+  return error instanceof Error;
+}
 
 export function getPostTopicFile(post: Pick<PostRecord, "slug">) {
   return path.join(POSTS_DIR, `${post.slug}.md`);
 }
 
-function renderTags(tags: string[]) {
-  if (!tags.length) {
-    return "_No tags yet._";
-  }
-
-  return tags.map((tag) => `\`${escapeMarkdownInline(tag)}\``).join(" ");
-}
-
 export function renderPostTopic(post: PostRecord) {
-  const summary = post.summary ? `${post.summary.trim()}\n\n` : "";
-
-  return `# ${post.title}\n\n> Published ${formatDate(post.publishedAt)}\n> Tags ${renderTags(post.tags)}\n\n${summary}${normalizeBody(post.body)}\n`;
+  return `# ${post.title}\n\n${normalizeBody(post.body)}\n`;
 }
 
-export function renderHomePage(posts: PostRecord[], bookmarks: BookmarkRecord[]) {
+export function renderHomeLatestPosts(posts: PostRecord[]) {
   const latestPosts = posts.slice(0, 3);
-  const latestBookmarks = bookmarks.slice(0, 3);
 
-  const postsBlock = latestPosts.length
+  return latestPosts.length
     ? latestPosts
-        .map(
-          (post) =>
-            `### [${escapeMarkdownInline(post.title)}](${post.topicPath})\n\n${formatDate(post.publishedAt)} - ${post.summary}\n`
-        )
+        .map((post) => `### [${escapeMarkdownInline(post.title)}](${post.topicPath})\n\n${formatDate(post.publishedAt)}\n`)
         .join("\n")
     : "No posts yet. The studio is ready when you are.\n";
+}
 
-  const bookmarksBlock = latestBookmarks.length
-    ? latestBookmarks
-        .map((bookmark) => `- [${escapeMarkdownInline(bookmark.title)}](${bookmark.url}) - ${bookmark.description}`)
-        .join("\n")
-    : "- No bookmarks yet. Add one from the studio and OpenCode will research it for you.";
+export function renderDefaultHomePage() {
+  return `# Home
 
-  return `# Signal & Static\n\nA Writerside blog that publishes from a desktop studio straight into GitHub Pages.\n\n## What lives here\n\n- Journal posts become Writerside topics the moment they are published from the Electron app.\n- Git pushes trigger a GitHub Actions workflow that rebuilds the public site.\n- Bookmarks are researched through OpenCode before they land in the reading queue.\n\n## Latest posts\n\n${postsBlock}\n## Reading queue\n\n${bookmarksBlock}\n\nSee the full [Journal](journal.md), [Bookmarks](bookmarks.md), and [Publishing workflow](workflow.md).\n`;
+This page stays hand-authored, with a small live feed for the newest journal entries.
+
+## Latest posts
+
+${HOME_LATEST_POSTS_START}
+${HOME_LATEST_POSTS_END}
+
+See the full [Journal](journal.md).
+`;
+}
+
+export function injectLatestPostsIntoHomePage(homeContent: string, posts: PostRecord[]) {
+  const startIndex = homeContent.indexOf(HOME_LATEST_POSTS_START);
+  const endIndex = homeContent.indexOf(HOME_LATEST_POSTS_END);
+
+  if (startIndex === -1 || endIndex === -1 || endIndex < startIndex) {
+    throw new Error(
+      `Home topic must contain ${HOME_LATEST_POSTS_START} and ${HOME_LATEST_POSTS_END} so the latest posts block can be updated.`
+    );
+  }
+
+  const before = homeContent.slice(0, startIndex + HOME_LATEST_POSTS_START.length);
+  const after = homeContent.slice(endIndex);
+
+  return `${before}\n${renderHomeLatestPosts(posts)}${after}`;
+}
+
+export async function syncHomePage(posts: PostRecord[]) {
+  let homeContent = renderDefaultHomePage();
+
+  try {
+    homeContent = await readTextFile(HOME_TOPIC_FILE);
+  } catch (error) {
+    if (!isNodeError(error) || error.code !== "ENOENT") {
+      throw error;
+    }
+  }
+
+  return writeTextFileIfChanged(HOME_TOPIC_FILE, injectLatestPostsIntoHomePage(homeContent, posts));
 }
 
 export function renderJournalPage(posts: PostRecord[]) {
   const archive = posts.length
     ? posts
-        .map(
-          (post) =>
-            `### [${escapeMarkdownInline(post.title)}](${post.topicPath})\n\n- Published ${formatDate(post.publishedAt)}\n- Tags ${renderTags(post.tags)}\n\n${post.summary}\n`
-        )
+        .map((post) => `### [${escapeMarkdownInline(post.title)}](${post.topicPath})\n\n${formatDate(post.publishedAt)}\n`)
         .join("\n")
     : "No posts yet. Publish your first note from the studio to start the archive.\n";
 
@@ -85,10 +110,6 @@ export function renderBookmarksPage(bookmarks: BookmarkRecord[]) {
   return `# Bookmarks\n\nA running table of links worth another pass. Every row is enriched through OpenCode before it gets published.\n\n${table}\n`;
 }
 
-export function renderWorkflowPage() {
-  return `# Publishing workflow\n\n## Desktop authoring\n\n- Write a post in the Electron studio and the app saves it into \`content/posts.json\` plus a Writerside topic file.\n- Paste a bookmark and the app asks OpenCode for a title, thumbnail, source, and short description.\n- Generated landing pages stay in sync through the shared content generator.\n\n## GitHub delivery\n\n- The studio stages the affected files, creates a focused commit, and pushes the branch.\n- A GitHub Actions workflow builds the \`Writerside/hi\` instance and deploys it to GitHub Pages.\n\n## Manual maintenance\n\n- Run \`npm run sync\` if you edit the JSON content directly and want to regenerate the Writerside pages.\n- Run \`npm run check\` and \`npm test\` before committing larger structural changes to the studio.\n`;
-}
-
 export function renderInstanceTree(posts: Array<Pick<PostRecord, "topicPath">>) {
   const postNodes = posts.map((post) => `        <toc-element topic="${post.topicPath}"/>`).join("\n");
 
@@ -99,14 +120,13 @@ export function renderInstanceTree(posts: Array<Pick<PostRecord, "topicPath">>) 
         SYSTEM "https://resources.jetbrains.com/writerside/1.0/product-profile.dtd">
 
 <instance-profile id="hi"
-                 name="Signal & Static"
+                 name="Home"
                  start-page="home.md">
 
     <toc-element topic="home.md"/>
     <toc-element topic="journal.md">${childrenBlock}
     </toc-element>
     <toc-element topic="bookmarks.md"/>
-    <toc-element topic="workflow.md"/>
 </instance-profile>
 `;
 }
@@ -114,11 +134,15 @@ export function renderInstanceTree(posts: Array<Pick<PostRecord, "topicPath">>) 
 export async function syncGeneratedContent({ posts, bookmarks }: { posts: PostRecord[]; bookmarks: BookmarkRecord[] }) {
   const changedFiles: string[] = [];
 
+  const didWriteHome = await syncHomePage(posts);
+
+  if (didWriteHome) {
+    changedFiles.push(HOME_TOPIC_FILE);
+  }
+
   const generatedFiles: Array<[string, string]> = [
-    [HOME_TOPIC_FILE, renderHomePage(posts, bookmarks)],
     [JOURNAL_TOPIC_FILE, renderJournalPage(posts)],
     [BOOKMARKS_TOPIC_FILE, renderBookmarksPage(bookmarks)],
-    [WORKFLOW_TOPIC_FILE, renderWorkflowPage()],
     [INSTANCE_TREE_FILE, renderInstanceTree(posts)]
   ];
 
@@ -137,13 +161,11 @@ export async function syncGeneratedContent({ posts, bookmarks }: { posts: PostRe
   return changedFiles;
 }
 
-export function createPostRecord({ title, summary, body, tags, slug, publishedAt }: CreatePostRecordInput): PostRecord {
+export function createPostRecord({ title, body, slug, publishedAt }: CreatePostRecordInput): PostRecord {
   return {
     slug,
     title: title.trim(),
-    summary: summary.trim() || summarize(body),
     body: normalizeBody(body),
-    tags,
     publishedAt,
     topicPath: `posts/${slug}.md`
   };

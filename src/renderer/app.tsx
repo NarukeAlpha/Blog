@@ -76,7 +76,7 @@ function App() {
   const [busyView, setBusyView] = useState<ViewKey | null>(null);
   const [frameKey, setFrameKey] = useState(0);
   const [activity, setActivity] = useState<ActivityItem[]>([]);
-  const [postDraft, setPostDraft] = useState({ title: "", summary: "", tags: "", body: "" });
+  const [postDraft, setPostDraft] = useState({ title: "", body: "" });
   const [bookmarkDraft, setBookmarkDraft] = useState({ url: "", note: "" });
 
   const pushActivity = useCallback((title: string, detail: string, tone: ActivityTone = "neutral") => {
@@ -153,7 +153,7 @@ function App() {
         pushActivity("Git", result.warning, "warning");
       }
 
-      setPostDraft({ title: "", summary: "", tags: "", body: "" });
+      setPostDraft({ title: "", body: "" });
       setView("dashboard");
       setFrameKey((current) => current + 1);
       await refreshStatus();
@@ -312,16 +312,6 @@ function App() {
                     value={postDraft.title}
                     onChange={(event) => setPostDraft((current) => ({ ...current, title: event.target.value }))}
                     required
-                  />
-                  <Input
-                    placeholder="Summary"
-                    value={postDraft.summary}
-                    onChange={(event) => setPostDraft((current) => ({ ...current, summary: event.target.value }))}
-                  />
-                  <Input
-                    placeholder="Tags"
-                    value={postDraft.tags}
-                    onChange={(event) => setPostDraft((current) => ({ ...current, tags: event.target.value }))}
                   />
                   <Textarea
                     placeholder="Markdown"

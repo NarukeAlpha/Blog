@@ -63,7 +63,6 @@ export const BOOKMARKS_DATA_FILE = path.join(CONTENT_DIR, "bookmarks.json");
 export const HOME_TOPIC_FILE = path.join(TOPICS_DIR, "home.md");
 export const JOURNAL_TOPIC_FILE = path.join(TOPICS_DIR, "journal.md");
 export const BOOKMARKS_TOPIC_FILE = path.join(TOPICS_DIR, "bookmarks.md");
-export const WORKFLOW_TOPIC_FILE = path.join(TOPICS_DIR, "workflow.md");
 export const INSTANCE_TREE_FILE = path.join(WRITERSIDE_DIR, "hi.tree");
 
 export const OPENCODE_PORT = 4096;

@@ -2,13 +2,7 @@
   {
     "slug": "welcome-to-the-lab",
     "title": "Welcome to the Lab",
-    "summary": "A first note about treating Writerside, GitHub Pages, and a desktop studio like one publishing loop.",
     "body": "This project turns a documentation stack into a personal publishing system.\n\n## The idea\n\nWrite in the desktop studio, save straight into Writerside topics, and let GitHub Pages rebuild the public site after every push.\n\n## What comes next\n\nThe same studio can also research bookmarks through OpenCode and drop them into a reading list with a thumbnail and a concise description.",
-    "tags": [
-      "intro",
-      "workflow",
-      "writerside"
-    ],
     "publishedAt": "2026-03-08T12:00:00.000Z",
     "topicPath": "posts/welcome-to-the-lab.md"
   }

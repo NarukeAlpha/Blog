@@ -3,7 +3,6 @@ import { publishFiles } from "./git";
 import { BOOKMARKS_DATA_FILE, POSTS_DATA_FILE } from "./paths";
 import { researchBookmark } from "./opencode";
 import { createUniqueSlug } from "./slug";
-import { parseTags } from "./text";
 import type { BookmarkPublishPayload, BookmarkPublishResult, BookmarkRecord, PostPublishPayload, PostPublishResult } from "./types";
 import { createPostRecord, syncGeneratedContent } from "./writerside";
 
@@ -32,9 +31,7 @@ export async function publishPostDraft(payload: PostPublishPayload): Promise<Pos
 
   const post = createPostRecord({
     title,
-    summary: String(payload.summary || ""),
     body,
-    tags: parseTags(payload.tags || ""),
     slug,
     publishedAt
   });

@@ -17,9 +17,7 @@ export interface GitPublishResult {
 export interface PostRecord {
   slug: string;
   title: string;
-  summary: string;
   body: string;
-  tags: string[];
   publishedAt: string;
   topicPath: string;
 }
@@ -57,7 +55,7 @@ export interface BookmarkPublishResult {
 export interface StudioBridge {
   platform: string;
   getStatus: () => Promise<StudioStatus>;
-  publishPost: (payload: { title: string; summary: string; tags: string; body: string }) => Promise<PostPublishResult>;
+  publishPost: (payload: { title: string; body: string }) => Promise<PostPublishResult>;
   publishBookmark: (payload: { url: string; note: string }) => Promise<BookmarkPublishResult>;
   openExternal: (url: string) => Promise<void>;
 }
