@@ -26,13 +26,15 @@ const config: Config = {
         "destructive-foreground": "hsl(var(--destructive-foreground))"
       },
       fontFamily: {
-        sans: ["Public Sans", "Avenir Next", "ui-sans-serif", "system-ui", "sans-serif"],
-        serif: ["Fraunces", "Iowan Old Style", "Palatino Linotype", "Book Antiqua", "serif"]
+        sans: ["Outfit", "Space Grotesk", "ui-sans-serif", "system-ui", "sans-serif"],
+        serif: ["Space Grotesk", "Outfit", "ui-sans-serif", "system-ui", "sans-serif"],
+        mono: ["JetBrains Mono", "ui-monospace", "monospace"]
       },
       boxShadow: {
-        panel: "0 8px 32px rgba(0, 0, 0, 0.06), 0 1px 3px rgba(0, 0, 0, 0.04)",
-        "glass-glow": "0 0 48px rgba(255, 255, 255, 0.12), 0 8px 32px rgba(0, 0, 0, 0.06)",
-        "glass-inset": "inset 0 1px 0 0 rgba(255, 255, 255, 0.72)"
+        panel: "0 8px 32px rgba(0, 0, 0, 0.25), 0 1px 3px rgba(0, 0, 0, 0.15)",
+        "glass-glow": "0 0 48px rgba(120, 80, 255, 0.08), 0 8px 32px rgba(0, 0, 0, 0.2)",
+        "glass-inset": "inset 0 1px 0 0 rgba(140, 130, 255, 0.1)",
+        neon: "0 0 20px rgba(120, 80, 255, 0.15), 0 0 60px rgba(120, 80, 255, 0.05)"
       },
       borderRadius: {
         xl: "1rem",
