@@ -77,28 +77,28 @@ export function PublicSite() {
         ))}
       </div>
 
-      <div className="relative z-10 mx-auto flex w-full max-w-7xl flex-col gap-6">
+      <div className="relative z-10 mx-auto flex w-full max-w-7xl flex-col gap-1">
         <section className="grid gap-6 lg:grid-cols-[minmax(0,1.5fr)_minmax(320px,0.85fr)]">
           <Card className="border-0 fade-up overflow-hidden">
-            <CardContent className="relative p-8 sm:p-10">
-              <div className="orb -left-12 top-0 h-40 w-40" />
-              <div className="orb orb-alt -right-10 bottom-4 h-32 w-32" />
-              <div className="orb-glow right-1/4 -top-8 h-48 w-48" />
-              <div className="relative grid gap-6">
+            <CardContent className="relative p-4 ">
+              <div className="orb -left-4 top-0 h-32 w-20" />
+              <div className="orb orb-alt -right-10 bottom-4 h-32 w-24" />
+              <div className="orb-glow right-1/4 -top-8 h-32 w-24" />
+              <div className="relative grid gap-2">
                 <div className="flex items-center gap-3">
-                  <Badge className="w-fit gap-2 px-3 py-1 border-purple-500/30 bg-purple-500/10 text-purple-300">
+                  <Badge className="w-fit px-3 border-purple-500/30 bg-purple-500/10 text-purple-300">
                     <Radio className="h-3.5 w-3.5 animate-pulse" />
                     Alpha Dev Ah-Jin
                   </Badge>
                 </div>
-                <div className="grid gap-4">
+                <div className="grid gap-1.5">
                   <h1 className="max-w-2xl font-serif text-3xl font-bold leading-tight sm:text-4xl lg:text-5xl bg-gradient-to-r from-white via-purple-200 to-cyan-200 bg-clip-text text-transparent drop-shadow-[0_0_40px_rgba(120,80,255,0.3)]">
                     Gabriel's Blog
                   </h1>
                   <p className="inline-block text-sm font-medium tracking-widest uppercase bg-gradient-to-r from-purple-400 via-cyan-300 to-purple-400 bg-[length:200%_auto] bg-clip-text text-transparent" style={{ animation: "shimmer 28s linear infinite" }}>
                     ✦ Thoughts about AI and general life philosophy ✦
                   </p>
-                  <div className="neon-line mt-2 w-3/4" />
+                  <div className="neon-line mt-0.5 w-3/4" />
                 </div>
               </div>
             </CardContent>
