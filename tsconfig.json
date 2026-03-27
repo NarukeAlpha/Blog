@@ -16,9 +16,12 @@
     "noUnusedParameters": true,
     "baseUrl": ".",
     "paths": {
-      "@/*": ["src/renderer/*"]
+      "@convex/*": ["convex/*"],
+      "@shared/*": ["packages/shared/src/*"],
+      "@site/*": ["apps/site/src/*"],
+      "@studio/*": ["apps/studio/src/*"]
     },
     "types": ["vite/client"]
   },
-  "include": ["src/**/*", "electron/**/*.ts", "lib/**/*.ts", "scripts/**/*.ts", "tests/**/*.ts", "convex/**/*.ts", "vite.config.ts", "tailwind.config.ts"]
+  "include": ["apps/**/*.ts", "apps/**/*.tsx", "packages/**/*.ts", "packages/**/*.tsx", "scripts/**/*.ts", "tests/**/*.ts", "convex/**/*.ts", "tailwind.config.ts"]
 }

@@ -1,9 +1,9 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import { getImageExtension } from "../lib/thumbnails";
-import { createUniqueSlug, slugify } from "../lib/slug";
-import { createExcerpt, estimateReadingTimeMinutes, normalizeBookmarkUrl, stripMarkdown } from "../lib/site";
+import { getImageExtension } from "../apps/studio/lib/thumbnails";
+import { createUniqueSlug, slugify } from "../packages/shared/src/slug";
+import { createExcerpt, estimateReadingTimeMinutes, normalizeBookmarkUrl, stripMarkdown } from "../packages/shared/src/site";
 
 test("slugify creates readable ASCII slugs", () => {
   assert.equal(slugify(" Hello, Convex World! "), "hello-convex-world");

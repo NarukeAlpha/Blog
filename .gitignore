@@ -7,3 +7,7 @@ release/
 /conversion.md
 .env.local
 .convex/
+apps/studio/cache/**
+!apps/studio/cache/thumbnails/
+!apps/studio/cache/thumbnails/bookmarks/
+!apps/studio/cache/thumbnails/bookmarks/.gitkeep

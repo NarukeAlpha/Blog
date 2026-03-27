@@ -2,14 +2,14 @@
 
 ## What ships
 
-- `npm run build:web` creates the standalone site in `dist/renderer/`.
+- `npm run build:site` creates the standalone site in `dist/site/`.
 - The frontend is static, but it reads live posts and bookmarks from Convex at runtime.
 - That means you only rebuild when code changes. Content changes flow through Convex immediately.
 
 ## Recommended path: Cloudflare Tunnel
 
-1. Build the site on the Windows PC with `npm run build:web`.
-2. Serve the output locally with something simple like `npx serve dist/renderer -l 8080`.
+1. Build the site on the Windows PC with `npm run build:site`.
+2. Serve the output locally with something simple like `npx serve dist/site -l 8080`.
 3. Install `cloudflared` on the PC.
 4. Authenticate once with `cloudflared tunnel login`.
 5. Create a tunnel: `cloudflared tunnel create narukealpha-blog`.

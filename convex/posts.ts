@@ -2,9 +2,9 @@ import { v } from "convex/values";
 import { mutationGeneric as mutation, queryGeneric as query } from "convex/server";
 
 import { assertStudioWriteKey } from "./guards";
-import { createExcerpt, estimateReadingTimeMinutes } from "../lib/site";
-import { createUniqueSlug } from "../lib/slug";
-import { normalizeBody } from "../lib/text";
+import { createExcerpt, estimateReadingTimeMinutes } from "../packages/shared/src/site";
+import { createUniqueSlug } from "../packages/shared/src/slug";
+import { normalizeBody } from "../packages/shared/src/text";
 
 function serializePost(post: {
   slug: string;

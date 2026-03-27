@@ -3,7 +3,7 @@ import { actionGeneric as action, mutationGeneric as mutation, queryGeneric as q
 
 import { api } from "./api";
 import { assertStudioWriteKey } from "./guards";
-import { normalizeBookmarkUrl } from "../lib/site";
+import { normalizeBookmarkUrl } from "../packages/shared/src/site";
 
 function serializeBookmark(bookmark: {
   url: string;
