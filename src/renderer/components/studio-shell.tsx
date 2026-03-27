@@ -145,7 +145,7 @@ export function StudioShell({ studio }: { studio: StudioBridge }) {
             <div className="grid gap-3">
               <Badge variant="secondary" className="w-fit gap-2 px-3 py-1">
                 <Radio className="h-3.5 w-3.5" />
-                Dispatch Studio
+                Studio
               </Badge>
               <div>
                 <CardTitle className="text-2xl">NarukeAlpha</CardTitle>
@@ -283,7 +283,7 @@ export function StudioShell({ studio }: { studio: StudioBridge }) {
                 <Card className="border-0">
                   <CardHeader className="pb-3">
                     <Badge variant="outline" className="w-fit">Recent posts</Badge>
-                    <CardTitle className="text-2xl">Fresh dispatches</CardTitle>
+                    <CardTitle className="text-2xl">Fresh posts</CardTitle>
                   </CardHeader>
                   <CardContent className="grid gap-3">
                     {overview?.latestPosts?.length ? (
@@ -335,7 +335,7 @@ export function StudioShell({ studio }: { studio: StudioBridge }) {
                     <NotebookPen className="h-3.5 w-3.5" />
                     Post
                   </Badge>
-                  <CardTitle className="text-3xl">Ship a new dispatch</CardTitle>
+                  <CardTitle className="text-3xl">Ship a new post</CardTitle>
                 </div>
               </CardHeader>
 

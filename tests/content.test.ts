@@ -14,9 +14,9 @@ test("createUniqueSlug adds numeric suffixes for duplicates", () => {
 });
 
 test("stripMarkdown removes common markdown formatting while keeping content", () => {
-  const plain = stripMarkdown("# Dispatch\n\nVisit [the docs](https://example.com) and `ship it`.\n\n- one\n- two");
+  const plain = stripMarkdown("# Post\n\nVisit [the docs](https://example.com) and `ship it`.\n\n- one\n- two");
 
-  assert.equal(plain, "Dispatch Visit the docs and ship it. - one - two");
+  assert.equal(plain, "Post Visit the docs and ship it. - one - two");
 });
 
 test("createExcerpt trims long markdown into a compact summary", () => {

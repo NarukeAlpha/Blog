@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { useQuery } from "convex/react";
-import { ArrowUpRight, BookOpenText, Layers3, Radio, Zap } from "lucide-react";
+import {ArrowUpRight, BookOpenText, Layers3, Zap} from "lucide-react";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 
@@ -51,7 +51,7 @@ export function PublicSite() {
   const activePost = useMemo(() => posts.find((post) => post.slug === activeSlug) ?? posts[0] ?? null, [activeSlug, posts]);
 
   const highlightedBookmarks = bookmarks.slice(0, 4);
-  const latestPost = posts[0] ?? null;
+  const latest = posts[0] ?? null;
 
   return (
     <div className="site-shell min-h-screen px-4 py-6 sm:px-6 lg:px-8">
@@ -77,50 +77,48 @@ export function PublicSite() {
         ))}
       </div>
 
-      <div className="relative z-10 mx-auto flex w-full max-w-7xl flex-col gap-1">
-        <section className="grid gap-6 lg:grid-cols-[minmax(0,1.5fr)_minmax(320px,0.85fr)]">
+      <div className="relative z-10 mx-auto flex w-full max-w-7xl flex-col gap-6">
+        {/* First Row */}
+        <section className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_minmax(320px,1fr)]">
+          {/* Title Card */}
           <Card className="border-0 fade-up overflow-hidden">
-            <CardContent className="relative p-4 ">
+            <CardContent className="relative p-4 sm:p-5">
               <div className="orb -left-4 top-0 h-32 w-20" />
               <div className="orb orb-alt -right-10 bottom-4 h-32 w-24" />
               <div className="orb-glow right-1/4 -top-8 h-32 w-24" />
-              <div className="relative grid gap-2">
-                <div className="flex items-center gap-3">
-                  <Badge className="w-fit px-3 border-purple-500/30 bg-purple-500/10 text-purple-300">
-                    <Radio className="h-3.5 w-3.5 animate-pulse" />
+              <div className="relative grid gap-1.5">
+                <div className="grid gap-1">
+                  <h1 className="max-w-2xl font-serif text-2xl font-bold leading-tight sm:text-3xl lg:text-4xl bg-gradient-to-r from-white via-purple-200 to-cyan-200 bg-clip-text text-transparent drop-shadow-[0_0_40px_rgba(120,80,255,0.3)]">
                     Alpha Dev Ah-Jin
-                  </Badge>
-                </div>
-                <div className="grid gap-1.5">
-                  <h1 className="max-w-2xl font-serif text-3xl font-bold leading-tight sm:text-4xl lg:text-5xl bg-gradient-to-r from-white via-purple-200 to-cyan-200 bg-clip-text text-transparent drop-shadow-[0_0_40px_rgba(120,80,255,0.3)]">
-                    Gabriel's Blog
                   </h1>
-                  <p className="inline-block text-sm font-medium tracking-widest uppercase bg-gradient-to-r from-purple-400 via-cyan-300 to-purple-400 bg-[length:200%_auto] bg-clip-text text-transparent" style={{ animation: "shimmer 28s linear infinite" }}>
-                    ✦ Thoughts about AI and general life philosophy ✦
+                  <p className="inline-block text-xs font-medium tracking-widest uppercase bg-gradient-to-r from-purple-400 via-cyan-300 to-purple-400 bg-[length:200%_auto] bg-clip-text text-transparent" style={{ animation: "shimmer 28s linear infinite" }}>
+                    thoughts
                   </p>
                   <div className="neon-line mt-0.5 w-3/4" />
                 </div>
               </div>
             </CardContent>
           </Card>
-
-          <div className="grid gap-4 sm:grid-cols-2">
+          {/* div with data */}
+          <div className="grid gap-3 sm:grid-cols-3">
             {[
-              { label: "Posts live", value: String(posts.length), icon: BookOpenText, color: "text-purple-400" },
-              { label: "Bookmarks saved", value: String(bookmarks.length), icon: Layers3, color: "text-cyan-400" },
-              { label: "Latest dispatch", value: latestPost ? formatDate(latestPost.publishedAt) : "Soon", icon: Zap, color: "text-amber-400" }
+              { label: "Posts", value: String(posts.length), icon: BookOpenText, color: "text-purple-400" },
+              { label: "Bookmarks", value: String(bookmarks.length), icon: Layers3, color: "text-cyan-400" },
+              { label: "Latest", value: latest ? formatDate(latest.publishedAt) : "Soon", icon: Zap, color: "text-amber-400", small: true }
             ].map((metric) => {
               const Icon = metric.icon;
 
               return (
-                <Card key={metric.label} className={`border-0 fade-up ${metric.label === "Latest dispatch" ? "sm:col-span-2" : ""}`}>
-                  <CardContent className="flex items-center justify-between gap-4 p-6">
-                    <div>
-                      <p className="text-xs uppercase tracking-[0.24em] text-muted-foreground">{metric.label}</p>
-                      <p className="mt-2 font-serif text-3xl font-semibold text-foreground">{metric.value}</p>
+                <Card key={metric.label} className="border-0 fade-up">
+                  <CardContent className="flex items-stretch gap-3 p-4">
+                    <div className="flex flex-1 flex-col justify-center">
+                      <p className="text-[0.65rem] uppercase tracking-[0.24em] text-muted-foreground">{metric.label}</p>
+                      <p className={`mt-0.5 font-serif font-semibold leading-tight text-foreground ${metric.small ? "text-base" : "text-2xl"}`}>{metric.value}</p>
                     </div>
-                    <div className={`flex h-12 w-12 items-center justify-center rounded-2xl bg-white/5 ${metric.color} shadow-neon border border-white/10`}>
-                      <Icon className="h-5 w-5" />
+                    <div className="flex items-center">
+                      <div className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-white/5 ${metric.color} shadow-neon border border-white/10`}>
+                        <Icon className="h-5 w-5" />
+                      </div>
                     </div>
                   </CardContent>
                 </Card>
@@ -128,14 +126,14 @@ export function PublicSite() {
             })}
           </div>
         </section>
-
-        <section className="grid gap-6 xl:grid-cols-[minmax(0,1.35fr)_minmax(320px,0.8fr)]">
+        {/* Second Row */}
+        <section className="grid gap-6 lg:grid-cols-[minmax(0,1.35fr)_minmax(320px,0.8fr)]">
           <Card id="journal" className="border-0 fade-up overflow-hidden">
             <CardHeader className="border-b border-white/10 pb-5">
               <div className="flex flex-wrap items-center justify-between gap-3">
                 <div>
                   <Badge variant="outline" className="w-fit border-purple-500/30 text-purple-300">Selected post</Badge>
-                  <CardTitle className="mt-3 text-3xl bg-gradient-to-r from-white to-purple-200 bg-clip-text text-transparent">{activePost?.title ?? "Loading dispatch"}</CardTitle>
+                  <CardTitle className="mt-3 text-3xl bg-gradient-to-r from-white to-purple-200 bg-clip-text text-transparent">{activePost?.title ?? "Loading post"}</CardTitle>
                 </div>
                 {activePost ? (
                   <div className="text-right text-sm text-muted-foreground">
@@ -160,7 +158,7 @@ export function PublicSite() {
             <Card className="border-0 fade-up">
               <CardHeader className="pb-3">
                 <Badge variant="outline" className="w-fit border-cyan-500/30 text-cyan-300">Journal queue</Badge>
-                <CardTitle className="text-2xl">Pick a dispatch</CardTitle>
+                <CardTitle className="text-2xl">Pick a Post</CardTitle>
               </CardHeader>
               <CardContent className="grid gap-3">
                 {posts.length ? (

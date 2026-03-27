@@ -104,7 +104,7 @@ function createWindow() {
 }
 
 app.whenReady().then(async () => {
-  app.setName("NarukeAlpha Dispatch Studio");
+  app.setName("NarukeAlpha Post Studio");
   loadWorkspaceEnv();
   await ensureWorkspaceDirectories();
   registerIpc();
