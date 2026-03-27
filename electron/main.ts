@@ -71,8 +71,8 @@ function createWindow() {
   mainWindow = new BrowserWindow({
     width: 1480,
     height: 980,
-    minWidth: 1180,
-    minHeight: 760,
+    minWidth: 480,
+    minHeight: 300,
     show: false,
     autoHideMenuBar: true,
     titleBarStyle: "hiddenInset",
@@ -81,7 +81,7 @@ function createWindow() {
     visualEffectState: "active",
     transparent: true,
     backgroundColor: "#00000000",
-    title: "NarukeAlpha Dispatch Studio",
+    title: "Writer Studio",
     webPreferences: {
       preload: path.join(__dirname, "preload.cjs"),
       contextIsolation: true,
@@ -104,7 +104,7 @@ function createWindow() {
 }
 
 app.whenReady().then(async () => {
-  app.setName("NarukeAlpha Dispatch Studio");
+  app.setName("NarukeAlpha Post Studio");
   loadWorkspaceEnv();
   await ensureWorkspaceDirectories();
   registerIpc();
