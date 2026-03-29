@@ -8,9 +8,9 @@ const buttonVariants = cva(
     variants: {
       variant: {
         default: "glass-subtle bg-primary/85 text-primary-foreground shadow-sm hover:bg-primary/95 hover:shadow-md",
-        secondary: "glass-subtle hover:bg-white/50",
-        ghost: "text-muted-foreground hover:bg-white/30 hover:text-foreground hover:backdrop-blur-sm",
-        outline: "glass-subtle hover:bg-white/40 hover:text-foreground"
+        secondary: "glass-subtle hover:bg-[rgba(120,80,255,0.12)]",
+        ghost: "text-muted-foreground hover:bg-[rgba(120,80,255,0.12)] hover:text-foreground hover:backdrop-blur-sm",
+        outline: "glass-subtle hover:bg-[rgba(120,80,255,0.12)] hover:text-foreground"
       },
       size: {
         default: "h-10 px-4 py-2",

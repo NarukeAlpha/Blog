@@ -1,6 +1,6 @@
 import { spawn, type ChildProcess } from "node:child_process";
 
-import { createOpencodeClient } from "@opencode-ai/sdk";
+import { createOpencodeClient, type Part } from "@opencode-ai/sdk/v2";
 
 import { OPENCODE_BASE_URL, OPENCODE_PORT, ROOT_DIR } from "./paths";
 import type { BookmarkResearchResult, OpencodeServerStatus } from "../../../packages/shared/src/types";
@@ -17,22 +17,67 @@ interface SessionInfoResponse {
   id: string;
 }
 
+interface PromptErrorResponse {
+  message?: string;
+  data?: {
+    message?: string;
+  };
+}
+
+interface BookmarkStructuredOutput {
+  title?: string;
+  description?: string;
+  thumbnailUrl?: string;
+  source?: string;
+}
+
 interface PromptResponse {
   info?: {
-    error?: {
-      message?: string;
-    };
-    structured_output?: {
-      title?: string;
-      description?: string;
-      thumbnailUrl?: string;
-      source?: string;
-    };
+    role?: string;
+    error?: PromptErrorResponse;
+    structured?: unknown;
+    structured_output?: unknown;
+  };
+  parts?: Array<Part | unknown>;
+}
+
+interface SessionMessageRecord extends PromptResponse {
+  info?: PromptResponse["info"] & {
+    role?: string;
   };
 }
 
 let opencodeProcess: ChildProcess | null = null;
 let startupPromise: Promise<OpencodeServerStatus> | null = null;
+
+const BOOKMARK_DESCRIPTION_MAX_LENGTH = 50;
+const BOOKMARK_WEBFETCH_TIMEOUT_SECONDS = 30;
+const BOOKMARK_RESPONSE_POLL_INTERVAL_MS = 1000;
+const BOOKMARK_RESPONSE_TIMEOUT_MS = 60000;
+
+const BOOKMARK_RESPONSE_SCHEMA = {
+  type: "object",
+  properties: {
+    title: {
+      type: "string",
+      description: "Human-readable page title for the bookmark"
+    },
+    description: {
+      type: "string",
+      maxLength: BOOKMARK_DESCRIPTION_MAX_LENGTH,
+      description: "Plain-text description of what the link is, 50 characters or fewer"
+    },
+    thumbnailUrl: {
+      type: "string",
+      description: "Absolute URL for a representative thumbnail image. Use an empty string if none is available"
+    },
+    source: {
+      type: "string",
+      description: "Publication, product, or site name"
+    }
+  },
+  required: ["title", "description", "thumbnailUrl", "source"]
+};
 
 const client = createOpencodeClient({
   baseUrl: OPENCODE_BASE_URL,
@@ -45,6 +90,170 @@ function unwrap<T>(response: PromptEnvelope<T> | T | undefined | null) {
   }
 
   return response as T | undefined;
+}
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return Boolean(value) && typeof value === "object";
+}
+
+function sleep(ms: number) {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+function normalizeInlineText(value: string) {
+  return String(value).replace(/\s+/g, " ").trim();
+}
+
+function getHostname(url: string) {
+  try {
+    return new URL(url).hostname.replace(/^www\./, "");
+  } catch {
+    return "bookmark";
+  }
+}
+
+export function truncateBookmarkDescription(value: string, maxLength = BOOKMARK_DESCRIPTION_MAX_LENGTH) {
+  const normalized = normalizeInlineText(value);
+
+  if (!normalized) {
+    return "";
+  }
+
+  if (normalized.length <= maxLength) {
+    return normalized;
+  }
+
+  const sliced = normalized.slice(0, maxLength + 1);
+  const lastSpace = sliced.lastIndexOf(" ");
+  const clipped = lastSpace >= Math.floor(maxLength * 0.6) ? sliced.slice(0, lastSpace) : sliced.slice(0, maxLength);
+
+  return clipped.trim().replace(/[\s.,;:!?-]+$/g, "");
+}
+
+function getDefaultBookmarkDescription(hostname: string) {
+  return truncateBookmarkDescription(`Saved link from ${hostname}`);
+}
+
+function getPromptErrorMessage(error: unknown) {
+  if (!isRecord(error)) {
+    return "";
+  }
+
+  const directMessage = typeof error.message === "string" ? error.message.trim() : "";
+
+  if (directMessage) {
+    return directMessage;
+  }
+
+  if (isRecord(error.data) && typeof error.data.message === "string") {
+    return error.data.message.trim();
+  }
+
+  return "";
+}
+
+function parseStructuredBookmarkMetadata(value: unknown): BookmarkStructuredOutput | null {
+  if (!isRecord(value)) {
+    return null;
+  }
+
+  const title = typeof value.title === "string" ? value.title : undefined;
+  const description = typeof value.description === "string" ? value.description : undefined;
+  const thumbnailUrl = typeof value.thumbnailUrl === "string" ? value.thumbnailUrl : undefined;
+  const source = typeof value.source === "string" ? value.source : undefined;
+
+  if (!title && !description && !thumbnailUrl && !source) {
+    return null;
+  }
+
+  return {
+    title,
+    description,
+    thumbnailUrl,
+    source
+  };
+}
+
+function parseJsonObject(text: string) {
+  const normalized = text.trim();
+
+  if (!normalized) {
+    return null;
+  }
+
+  const withoutFence = normalized
+    .replace(/^```json\s*/i, "")
+    .replace(/^```\s*/i, "")
+    .replace(/```$/i, "")
+    .trim();
+
+  try {
+    return JSON.parse(withoutFence);
+  } catch {
+    const objectStart = withoutFence.indexOf("{");
+    const objectEnd = withoutFence.lastIndexOf("}");
+
+    if (objectStart === -1 || objectEnd <= objectStart) {
+      return null;
+    }
+
+    try {
+      return JSON.parse(withoutFence.slice(objectStart, objectEnd + 1));
+    } catch {
+      return null;
+    }
+  }
+}
+
+function parseBookmarkMetadataFromParts(parts: Array<Part | unknown> | undefined) {
+  if (!parts?.length) {
+    return null;
+  }
+
+  const text = parts
+    .map((part) => {
+      if (!isRecord(part) || part.type !== "text" || typeof part.text !== "string") {
+        return "";
+      }
+
+      return part.text;
+    })
+    .filter(Boolean)
+    .join("\n")
+    .trim();
+
+  if (!text) {
+    return null;
+  }
+
+  return parseStructuredBookmarkMetadata(parseJsonObject(text));
+}
+
+export function extractBookmarkStructuredMetadata(response: PromptResponse | null | undefined) {
+  const info = response?.info;
+
+  return (
+    parseStructuredBookmarkMetadata(info?.structured) ||
+    parseStructuredBookmarkMetadata(info?.structured_output) ||
+    parseBookmarkMetadataFromParts(response?.parts)
+  );
+}
+
+export function normalizeBookmarkMetadata(url: string, metadata: BookmarkStructuredOutput | null | undefined) {
+  const hostname = getHostname(url);
+  const title = normalizeInlineText(String(metadata?.title || hostname)) || hostname;
+  const source = normalizeInlineText(String(metadata?.source || hostname)) || hostname;
+  const description =
+    truncateBookmarkDescription(String(metadata?.description || "")) || getDefaultBookmarkDescription(hostname);
+  const thumbnailCandidate = normalizeInlineText(String(metadata?.thumbnailUrl || ""));
+  const thumbnailUrl = /^https?:\/\//.test(thumbnailCandidate) ? thumbnailCandidate : "";
+
+  return {
+    title,
+    description,
+    source,
+    thumbnailUrl
+  };
 }
 
 async function getHealth() {
@@ -152,88 +361,97 @@ export async function ensureOpencodeServer(): Promise<OpencodeServerStatus> {
   }
 }
 
-function buildBookmarkPrompt(url: string, note: string) {
+export function buildBookmarkPrompt(url: string, note: string) {
   const noteBlock = note ? `\nAdditional context from the user: ${note}\n` : "\n";
 
   return `Investigate this bookmark for a personal reading queue.${noteBlock}
 URL: ${url}
 
-Return accurate metadata only. Prefer the page's canonical title and site/source name. If the page exposes an image, prefer the absolute Open Graph image URL. Keep the description to one or two concise sentences and do not invent unavailable details.`;
+Use the webfetch tool exactly once on the URL above before answering. Base the result on the fetched page, not prior knowledge.
+
+Return accurate structured metadata only.
+Rules:
+- Fetch the exact URL above with webfetch before answering.
+- Set webfetch format to html.
+- Set webfetch timeout to ${BOOKMARK_WEBFETCH_TIMEOUT_SECONDS} seconds.
+- Prefer the page's canonical title.
+- Use the site, publication, or product name for source.
+- If the page exposes an image, prefer an absolute Open Graph image URL.
+- The description must be plain text, describe what the link is, and stay within ${BOOKMARK_DESCRIPTION_MAX_LENGTH} characters.
+- Use an empty string for thumbnailUrl when no suitable absolute image URL is available.
+- Do not invent unavailable details or include extra prose outside the structured response.`;
+}
+
+async function resolveBookmarkMetadata(sessionID: string) {
+  const startedAt = Date.now();
+  let lastAssistantError = "";
+
+  while (Date.now() - startedAt < BOOKMARK_RESPONSE_TIMEOUT_MS) {
+    const messages =
+      unwrap<Array<SessionMessageRecord>>(await client.session.messages({ sessionID, limit: 20 })) || [];
+
+    const assistantMessages = messages.filter((message) => message.info?.role === "assistant");
+
+    for (const message of assistantMessages.slice().reverse()) {
+      const assistantError = getPromptErrorMessage(message.info?.error);
+
+      if (assistantError) {
+        lastAssistantError = assistantError;
+        continue;
+      }
+
+      const structured = extractBookmarkStructuredMetadata(message);
+
+      if (structured) {
+        return structured;
+      }
+    }
+
+    if (lastAssistantError) {
+      throw new Error(lastAssistantError);
+    }
+
+    const statusMap = unwrap<Record<string, { type?: string }>>(await client.session.status({})) || {};
+    const sessionStatus = statusMap[sessionID];
+
+    if (sessionStatus?.type === "idle" && assistantMessages.length > 0) {
+      break;
+    }
+
+    await sleep(BOOKMARK_RESPONSE_POLL_INTERVAL_MS);
+  }
+
+  return null;
 }
 
 export async function researchBookmark(url: string, note = ""): Promise<BookmarkResearchResult> {
   const server = await ensureOpencodeServer();
   const createdSession = unwrap<SessionInfoResponse>(
-    (await (client.session.create as (...args: unknown[]) => Promise<unknown>)({
-      body: {
-        title: `Bookmark research: ${url}`
-      }
-    })) as PromptEnvelope<SessionInfoResponse>
+    await client.session.create({ title: `Bookmark research: ${url}` }) as PromptEnvelope<SessionInfoResponse>
   );
 
   if (!createdSession?.id) {
     throw new Error("OpenCode could not create a bookmark session.");
   }
 
-  const response = unwrap<PromptResponse>(
-    (await (client.session.prompt as (...args: unknown[]) => Promise<unknown>)({
-      path: { id: createdSession.id },
-      body: {
-        parts: [{ type: "text", text: buildBookmarkPrompt(url, note) }],
-        format: {
-          type: "json_schema",
-          retryCount: 2,
-          schema: {
-            type: "object",
-            properties: {
-              title: {
-                type: "string",
-                description: "Human-readable page title for the bookmark"
-              },
-              description: {
-                type: "string",
-                description: "One or two concise sentences that explain why the link is worth reading"
-              },
-              thumbnailUrl: {
-                type: "string",
-                description: "Absolute URL for a representative thumbnail image. Use an empty string if none is available"
-              },
-              source: {
-                type: "string",
-                description: "Publication, product, or site name"
-              }
-            },
-            required: ["title", "description", "thumbnailUrl", "source"]
-          }
-        }
-      }
-    })) as PromptEnvelope<PromptResponse>
-  );
+  await client.session.promptAsync({
+    sessionID: createdSession.id,
+    agent: "build",
+    parts: [{ type: "text", text: buildBookmarkPrompt(url, note) }],
+    format: {
+      type: "json_schema",
+      retryCount: 2,
+      schema: BOOKMARK_RESPONSE_SCHEMA
+    }
+  });
 
-  if (response?.info?.error) {
-    throw new Error(response.info.error.message || "OpenCode could not generate bookmark metadata.");
-  }
-
-  const structured = response?.info?.structured_output;
+  const structured = await resolveBookmarkMetadata(createdSession.id);
 
   if (!structured) {
-    throw new Error("OpenCode did not return structured bookmark metadata.");
+    throw new Error("OpenCode did not return bookmark metadata before timing out.");
   }
 
-  let hostname = "bookmark";
-
-  try {
-    hostname = new URL(url).hostname.replace(/^www\./, "");
-  } catch {
-    // noop
-  }
-
-  const title = String(structured.title || hostname).trim();
-  const description = String(structured.description || `A saved link from ${hostname}.`).trim();
-  const source = String(structured.source || hostname).trim();
-  const thumbnailUrl = /^https?:\/\//.test(String(structured.thumbnailUrl || "").trim())
-    ? String(structured.thumbnailUrl).trim()
-    : "";
+  const { title, description, source, thumbnailUrl } = normalizeBookmarkMetadata(url, structured);
 
   return {
     ...server,

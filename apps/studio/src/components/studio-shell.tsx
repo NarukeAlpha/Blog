@@ -28,7 +28,7 @@ const navItems: Array<{ key: ViewKey; label: string; icon: typeof Database }> = 
 ];
 
 const noticeToneClasses: Record<NoticeTone, string> = {
-  neutral: "border-white/35 bg-white/55 text-foreground",
+  neutral: "glass-subtle text-foreground",
   success: "border-success/20 bg-success/10 text-success",
   warning: "border-warning/20 bg-warning/10 text-warning",
   error: "border-destructive/20 bg-destructive/10 text-destructive"
@@ -136,25 +136,30 @@ export function StudioShell({ studio }: { studio: StudioBridge }) {
   }
 
   return (
-    <div className="min-h-screen px-4 pb-4 pt-12 text-foreground sm:px-6">
+    <div className="min-h-screen px-4 pb-4 pt-12 text-foreground sm:px-6 relative overflow-hidden">
+      <div className="stardust-overlay" />
+      <div className="orb w-[340px] h-[340px] -top-20 -left-32 opacity-40" />
+      <div className="orb orb-alt w-[260px] h-[260px] top-1/2 -right-24 opacity-30" />
+      <div className="orb-glow w-[200px] h-[200px] bottom-20 left-1/3 opacity-25" />
       <div className="titlebar-drag fixed inset-x-0 top-0 z-50 h-12" />
 
-      <div className="mx-auto grid max-w-7xl gap-4 xl:grid-cols-[260px_minmax(0,1fr)]">
-        <Card className="titlebar-no-drag flex h-full flex-col border-0 xl:max-h-[calc(100vh-4rem)]">
+      <div className="relative z-10 mx-auto grid max-w-7xl gap-4 xl:grid-cols-[260px_minmax(0,1fr)]">
+        <Card className="titlebar-no-drag flex h-full flex-col xl:max-h-[calc(100vh-4rem)]">
           <CardHeader className="space-y-5 pb-4">
             <div className="grid gap-3">
               <Badge variant="secondary" className="w-fit gap-2 px-3 py-1">
-                <Radio className="h-3.5 w-3.5" />
+                <Radio className="h-3.5 w-3.5 animate-pulse" />
                 Studio
               </Badge>
               <div>
-                <CardTitle className="text-2xl">NarukeAlpha</CardTitle>
+                <CardTitle className="text-2xl bg-[linear-gradient(135deg,#fff_0%,#c4b5fd_50%,#00d2e6_100%)] bg-clip-text text-transparent">NarukeAlpha</CardTitle>
                 <p className="mt-1 text-sm text-muted-foreground">Local writing surface, hosted Convex sync.</p>
               </div>
             </div>
           </CardHeader>
 
           <CardContent className="flex flex-1 flex-col gap-5">
+            <div className="neon-line" />
             <nav className="grid gap-1">
               {navItems.map((item) => {
                 const Icon = item.icon;
@@ -164,7 +169,10 @@ export function StudioShell({ studio }: { studio: StudioBridge }) {
                   <Button
                     key={item.key}
                     variant={active ? "secondary" : "ghost"}
-                    className={cn("justify-start", active && "bg-white/55")}
+                    className={cn(
+                      "justify-start",
+                      active && "bg-[linear-gradient(135deg,rgba(120,80,255,0.22),rgba(0,210,230,0.10))] border-[rgba(120,80,255,0.45)] shadow-[0_0_16px_rgba(120,80,255,0.18)]"
+                    )}
                     onClick={() => setView(item.key)}
                   >
                     <Icon className="h-4 w-4" />
@@ -179,9 +187,9 @@ export function StudioShell({ studio }: { studio: StudioBridge }) {
                 const Icon = metric.icon;
 
                 return (
-                  <div key={metric.label} className="rounded-[1.6rem] border border-white/30 bg-white/45 px-4 py-4">
+                  <div key={metric.label} className="glass-subtle rounded-[1.6rem] px-4 py-4">
                     <div className="flex items-center justify-between gap-3">
-                      <p className="text-xs uppercase tracking-[0.18em] text-muted-foreground">{metric.label}</p>
+                      <p className="font-mono text-xs uppercase tracking-[0.18em] text-muted-foreground">{metric.label}</p>
                       <Icon className="h-4 w-4 text-muted-foreground" />
                     </div>
                     <p className="mt-3 font-serif text-3xl text-foreground">{metric.value}</p>
@@ -190,7 +198,7 @@ export function StudioShell({ studio }: { studio: StudioBridge }) {
               })}
             </div>
 
-            <div className="mt-auto grid gap-3 rounded-[1.8rem] border border-white/30 bg-white/45 px-4 py-4 text-xs text-muted-foreground">
+            <div className="mt-auto grid gap-3 glass-heavy rounded-[1.8rem] px-4 py-4 text-xs text-muted-foreground">
               <div className="flex items-center gap-2">
                 <FolderOpenDot className="h-4 w-4 shrink-0" />
                 <span className="truncate">{status ? shortenPath(status.rootDir) : loadingStatus ? "Loading workspace" : "Unavailable"}</span>
@@ -207,9 +215,9 @@ export function StudioShell({ studio }: { studio: StudioBridge }) {
           </CardContent>
         </Card>
 
-        <main className="titlebar-no-drag flex min-w-0 flex-col gap-4">
+        <main className="titlebar-no-drag flex min-w-0 flex-col gap-4 fade-up">
           {notice ? (
-            <div className={cn("rounded-[1.8rem] border px-4 py-3", noticeToneClasses[notice.tone])}>
+            <div className={cn("rounded-[1.8rem] px-4 py-3 backdrop-blur-md", noticeToneClasses[notice.tone])}>
               <p className="text-sm font-medium">{notice.title}</p>
               <p className="mt-1 text-sm opacity-90">{notice.detail}</p>
             </div>
@@ -217,12 +225,12 @@ export function StudioShell({ studio }: { studio: StudioBridge }) {
 
           {view === "dashboard" ? (
             <div className="grid gap-4 lg:grid-cols-[minmax(0,1.15fr)_minmax(320px,0.85fr)]">
-              <Card className="border-0">
-                <CardHeader className="border-b border-white/35 pb-5">
+              <Card>
+                <CardHeader className="border-b border-[var(--glass-border-subtle)] pb-5">
                   <div className="flex flex-wrap items-center justify-between gap-3">
                     <div>
                       <Badge variant="outline" className="w-fit">Overview</Badge>
-                      <CardTitle className="mt-3 text-3xl">The live publishing loop</CardTitle>
+                      <CardTitle className="mt-3 text-3xl bg-[linear-gradient(135deg,#fff,#c4b5fd)] bg-clip-text text-transparent">The live publishing loop</CardTitle>
                     </div>
                     <div className="flex items-center gap-2">
                       <Button variant="outline" size="icon" onClick={() => void refreshStatus(false)} aria-label="Refresh studio status">
@@ -238,7 +246,7 @@ export function StudioShell({ studio }: { studio: StudioBridge }) {
                   </div>
                 </CardHeader>
                 <CardContent className="grid gap-5 p-6">
-                  <div className="rounded-[1.8rem] border border-white/30 bg-white/55 p-5">
+                  <div className="glass-subtle rounded-[1.8rem] p-5">
                     <p className="text-sm leading-7 text-muted-foreground">
                       Write on the MacBook, hit publish, and Convex becomes the source of truth. The site reads the same deployment live, so the Windows box only has to serve the frontend bundle.
                     </p>
@@ -268,11 +276,11 @@ export function StudioShell({ studio }: { studio: StudioBridge }) {
                         tone: "neutral"
                       }
                     ].map((item) => (
-                      <div key={item.label} className="rounded-[1.6rem] border border-white/30 bg-white/45 p-4">
+                      <div key={item.label} className="glass-subtle rounded-[1.6rem] p-4 transition-all duration-200 hover:bg-[rgba(120,80,255,0.08)] hover:border-[rgba(120,80,255,0.3)]">
                         <Badge variant={item.tone === "success" ? "success" : item.tone === "warning" ? "warning" : "outline"} className="w-fit">
                           {item.label}
                         </Badge>
-                        <p className="mt-3 text-sm leading-7 text-muted-foreground">{item.detail}</p>
+                        <p className="mt-3 font-mono text-sm leading-7 text-muted-foreground">{item.detail}</p>
                       </div>
                     ))}
                   </div>
@@ -280,18 +288,18 @@ export function StudioShell({ studio }: { studio: StudioBridge }) {
               </Card>
 
               <div className="grid gap-4">
-                <Card className="border-0">
+                <Card>
                   <CardHeader className="pb-3">
                     <Badge variant="outline" className="w-fit">Recent posts</Badge>
-                    <CardTitle className="text-2xl">Fresh posts</CardTitle>
+                    <CardTitle className="text-2xl bg-[linear-gradient(135deg,#fff,#c4b5fd)] bg-clip-text text-transparent">Fresh posts</CardTitle>
                   </CardHeader>
                   <CardContent className="grid gap-3">
                     {overview?.latestPosts?.length ? (
                       overview.latestPosts.map((post) => (
-                        <div key={post.slug} className="rounded-[1.5rem] border border-white/30 bg-white/45 p-4">
+                        <div key={post.slug} className="glass-subtle rounded-[1.5rem] p-4 transition-all duration-200 hover:bg-[rgba(120,80,255,0.08)] hover:border-[rgba(120,80,255,0.3)]">
                           <div className="flex items-center justify-between gap-3">
                             <p className="font-medium text-foreground">{post.title}</p>
-                            <span className="text-xs uppercase tracking-[0.18em] text-muted-foreground">{post.readingTimeMinutes} min</span>
+                            <span className="font-mono text-xs uppercase tracking-[0.18em] text-muted-foreground">{post.readingTimeMinutes} min</span>
                           </div>
                           <p className="mt-2 text-sm text-muted-foreground">{post.excerpt}</p>
                         </div>
@@ -302,18 +310,18 @@ export function StudioShell({ studio }: { studio: StudioBridge }) {
                   </CardContent>
                 </Card>
 
-                <Card className="border-0">
+                <Card>
                   <CardHeader className="pb-3">
                     <Badge variant="outline" className="w-fit">Bookmarks</Badge>
-                    <CardTitle className="text-2xl">Latest saves</CardTitle>
+                    <CardTitle className="text-2xl bg-[linear-gradient(135deg,#fff,#c4b5fd)] bg-clip-text text-transparent">Latest saves</CardTitle>
                   </CardHeader>
                   <CardContent className="grid gap-3">
                     {overview?.latestBookmarks?.length ? (
                       overview.latestBookmarks.map((bookmark) => (
-                        <div key={bookmark.url} className="rounded-[1.5rem] border border-white/30 bg-white/45 p-4">
+                        <div key={bookmark.url} className="glass-subtle rounded-[1.5rem] p-4 transition-all duration-200 hover:bg-[rgba(120,80,255,0.08)] hover:border-[rgba(120,80,255,0.3)]">
                           <div className="flex items-center justify-between gap-3">
                             <p className="font-medium text-foreground">{bookmark.title}</p>
-                            <span className="text-xs uppercase tracking-[0.18em] text-muted-foreground">{formatDate(bookmark.addedAt)}</span>
+                            <span className="font-mono text-xs uppercase tracking-[0.18em] text-muted-foreground">{formatDate(bookmark.addedAt)}</span>
                           </div>
                           <p className="mt-2 text-sm text-muted-foreground">{bookmark.description}</p>
                         </div>
@@ -328,14 +336,14 @@ export function StudioShell({ studio }: { studio: StudioBridge }) {
           ) : null}
 
           {view === "post" ? (
-            <Card className="border-0">
+            <Card>
               <CardHeader className="pb-4">
                 <div className="flex items-center gap-3">
                   <Badge className="gap-2">
                     <NotebookPen className="h-3.5 w-3.5" />
                     Post
                   </Badge>
-                  <CardTitle className="text-3xl">Ship a new post</CardTitle>
+                  <CardTitle className="text-3xl bg-[linear-gradient(135deg,#fff,#c4b5fd)] bg-clip-text text-transparent">Ship a new post</CardTitle>
                 </div>
               </CardHeader>
 
@@ -356,7 +364,7 @@ export function StudioShell({ studio }: { studio: StudioBridge }) {
                   />
 
                   <div className="flex justify-end">
-                    <Button type="submit" disabled={busyView === "post"}>
+                    <Button type="submit" disabled={busyView === "post"} className="hover:shadow-[0_0_20px_rgba(0,210,230,0.25)]">
                       {busyView === "post" ? "Publishing..." : "Publish to Convex"}
                     </Button>
                   </div>
@@ -366,14 +374,14 @@ export function StudioShell({ studio }: { studio: StudioBridge }) {
           ) : null}
 
           {view === "bookmarks" ? (
-            <Card className="border-0">
+            <Card>
               <CardHeader className="pb-4">
                 <div className="flex items-center gap-3">
                   <Badge className="gap-2">
                     <Sparkles className="h-3.5 w-3.5" />
                     Bookmark
                   </Badge>
-                  <CardTitle className="text-3xl">Research and publish a link</CardTitle>
+                  <CardTitle className="text-3xl bg-[linear-gradient(135deg,#fff,#c4b5fd)] bg-clip-text text-transparent">Research and publish a link</CardTitle>
                 </div>
               </CardHeader>
 
@@ -398,7 +406,7 @@ export function StudioShell({ studio }: { studio: StudioBridge }) {
                       <Globe2 className="h-3.5 w-3.5" />
                       OpenCode enriches metadata, Convex keeps it synced
                     </Badge>
-                    <Button type="submit" disabled={busyView === "bookmarks"}>
+                    <Button type="submit" disabled={busyView === "bookmarks"} className="hover:shadow-[0_0_20px_rgba(0,210,230,0.25)]">
                       {busyView === "bookmarks" ? "Publishing..." : "Publish bookmark"}
                     </Button>
                   </div>

@@ -8,7 +8,7 @@ const badgeVariants = cva(
       variant: {
         default: "glass-subtle text-primary",
         secondary: "glass-subtle text-secondary-foreground",
-        outline: "border border-white/30 bg-white/20 text-muted-foreground backdrop-blur-sm",
+        outline: "border border-[var(--glass-border)] bg-[rgba(120,100,255,0.08)] text-muted-foreground backdrop-blur-sm",
         success: "bg-success/12 text-success backdrop-blur-sm border border-success/20",
         warning: "bg-warning/12 text-warning backdrop-blur-sm border border-warning/20",
         destructive: "bg-destructive/12 text-destructive backdrop-blur-sm border border-destructive/20"

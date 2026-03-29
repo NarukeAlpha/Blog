@@ -183,6 +183,20 @@
 .pub-label-icon--cyan  { color: #00d2e6; }
 .pub-label-icon--amber { color: #f59e0b; }
 
+/* ── Content tab bar + body ── */
+
+.pub-tab-bar {
+    display: flex;
+    gap: .75rem;
+    margin-bottom: 1.5rem;
+}
+
+.pub-tab-body {
+    display: flex;
+    flex-direction: column;
+    gap: 1.5rem;
+}
+
 /* ── Post navigation (horizontal scrolling tabs) ── */
 
 .pub-nav-scroll {
