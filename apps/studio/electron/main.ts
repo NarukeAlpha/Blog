@@ -3,7 +3,7 @@ import { fileURLToPath } from "node:url";
 
 import { app, BrowserWindow, ipcMain, shell } from "electron";
 
-import { getPublicSiteUrl, getSiteOverview, hasWriteKey, isConvexConfigured } from "../lib/convex";
+import { getPublicSiteUrl, getSiteOverview, hasWriteKey, isConvexConfigured, isConvexReachable } from "../lib/convex";
 import { loadWorkspaceEnv } from "../lib/env";
 import { isOpencodeHealthy, shutdownOpencodeServer } from "../lib/opencode";
 import { ROOT_DIR, THUMBNAILS_DIR } from "../lib/paths";
@@ -24,15 +24,24 @@ async function getStatusPayload() {
   let convexReachable = false;
   let postCount = 0;
   let bookmarkCount = 0;
+  let overview = null;
 
   if (convexConfigured) {
     try {
-      const overview = await getSiteOverview();
+      await isConvexReachable();
       convexReachable = true;
+    } catch {
+      convexReachable = false;
+    }
+  }
+
+  if (convexReachable && hasWriteKey()) {
+    try {
+      overview = await getSiteOverview();
       postCount = overview.postCount;
       bookmarkCount = overview.bookmarkCount;
     } catch {
-      convexReachable = false;
+      overview = null;
     }
   }
 
@@ -45,7 +54,8 @@ async function getStatusPayload() {
     writeKeyConfigured: hasWriteKey(),
     opencodeReady,
     postCount,
-    bookmarkCount
+    bookmarkCount,
+    overview
   };
 }
 

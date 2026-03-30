@@ -1,5 +1,5 @@
 import { v } from "convex/values";
-import { mutationGeneric as mutation, queryGeneric as query } from "convex/server";
+import { internalQuery, mutation } from "./_generated/server";
 
 import { assertStudioWriteKey } from "./guards";
 import { createExcerpt, estimateReadingTimeMinutes } from "../packages/shared/src/site";
@@ -24,7 +24,7 @@ function serializePost(post: {
   };
 }
 
-export const list = query({
+export const list = internalQuery({
   args: {},
   handler: async (ctx) => {
     const posts = await ctx.db.query("posts").withIndex("by_publishedAt").order("desc").collect();

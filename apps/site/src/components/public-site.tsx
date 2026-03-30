@@ -6,7 +6,7 @@ import remarkGfm from "remark-gfm";
 
 import { api } from "@convex/api";
 import { formatDate } from "@shared/text";
-import type { BookmarkRecord, PostRecord } from "@shared/types";
+import type { PostRecord, PublicBookmarkRecord } from "@shared/types";
 import "./public-site.css";
 
 function useActiveSlug(slugs: string[]) {
@@ -45,8 +45,8 @@ function useActiveSlug(slugs: string[]) {
 type ContentTab = "journal" | "bookmarks";
 
 export function PublicSite() {
-  const posts = (useQuery(api.posts.list, {}) ?? []) as PostRecord[];
-  const bookmarks = (useQuery(api.bookmarks.list, {}) ?? []) as BookmarkRecord[];
+  const posts = (useQuery(api.public.listPosts, {}) ?? []) as PostRecord[];
+  const bookmarks = (useQuery(api.public.listBookmarks, {}) ?? []) as PublicBookmarkRecord[];
   const [activeSlug, setActiveSlug] = useActiveSlug(posts.map((post) => post.slug));
   const activePost = useMemo(() => posts.find((post) => post.slug === activeSlug) ?? posts[0] ?? null, [activeSlug, posts]);
   const highlightedBookmarks = bookmarks.slice(0, 4);

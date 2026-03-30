@@ -52,6 +52,11 @@ export function getConvexClient() {
   return client;
 }
 
+export async function isConvexReachable() {
+  await getConvexClient().query(api.public.health, {});
+  return true;
+}
+
 export async function getSiteOverview() {
-  return getConvexClient().query(api.site.overview, {});
+  return getConvexClient().query(api.site.overview, { apiKey: getStudioWriteKey() });
 }

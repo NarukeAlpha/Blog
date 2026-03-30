@@ -8,7 +8,7 @@ The website and the Electron studio now live in separate directories while shari
 - `apps/studio/` - Electron app, studio renderer, and local publishing helpers.
 - `packages/shared/` - shared types, text helpers, content utilities, and base styling.
 - `convex/` - shared backend functions and schema.
-- `docs/serve-on-windows.md` - Windows + Cloudflare hosting notes for the site.
+- `docs/deploy-site-on-cloudflare.md` - Cloudflare hosting notes for the public site.
 
 ## Local setup
 
