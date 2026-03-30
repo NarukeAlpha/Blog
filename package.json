@@ -1,6 +1,8 @@
 {
   "name": "narukealpha-convex-studio",
   "version": "0.1.0",
+  "description": "Standalone Electron writing studio for NarukeAlpha.",
+  "author": "NarukeAlpha",
   "private": true,
   "type": "module",
   "main": "dist/studio/electron/main.js",
@@ -23,6 +25,8 @@
     "build:studio:electron": "npm run build:studio:electron:main && npm run build:studio:electron:preload",
     "build:studio:electron:main": "esbuild apps/studio/electron/main.ts --bundle --platform=node --format=esm --outfile=dist/studio/electron/main.js --external:electron",
     "build:studio:electron:preload": "esbuild apps/studio/electron/preload.ts --bundle --platform=node --format=cjs --outfile=dist/studio/electron/preload.cjs --external:electron",
+    "package:studio": "npm run build:studio && electron-builder --mac dmg --win nsis",
+    "package:studio:dir": "npm run build:studio && electron-builder --dir",
     "check": "tsc --noEmit && npm run build:site && npm run build:studio && tsx scripts/check.ts",
     "test": "tsx --test tests/**/*.test.ts"
   },
@@ -48,6 +52,7 @@
     "concurrently": "^9.2.1",
     "cross-env": "^10.1.0",
     "electron": "^40.8.0",
+    "electron-builder": "^26.0.12",
     "esbuild": "^0.27.3",
     "postcss": "^8.5.8",
     "react-grab": "^0.1.28",
@@ -56,5 +61,34 @@
     "typescript": "^5.9.3",
     "vite": "^7.3.1",
     "wait-on": "^9.0.4"
+  },
+  "build": {
+    "appId": "com.narukealpha.studio",
+    "productName": "NarukeAlpha Post Studio",
+    "asar": true,
+    "directories": {
+      "output": "release/studio"
+    },
+    "files": [
+      "dist/studio/**/*",
+      "package.json"
+    ],
+    "mac": {
+      "category": "public.app-category.productivity",
+      "target": [
+        "dmg"
+      ]
+    },
+    "win": {
+      "target": [
+        "nsis"
+      ]
+    },
+    "nsis": {
+      "oneClick": false,
+      "perMachine": false,
+      "allowToChangeInstallationDirectory": true
+    },
+    "publish": null
   }
 }

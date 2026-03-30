@@ -2,7 +2,8 @@ import { spawn, type ChildProcess } from "node:child_process";
 
 import { createOpencodeClient, type Part } from "@opencode-ai/sdk/v2";
 
-import { OPENCODE_BASE_URL, OPENCODE_PORT, ROOT_DIR } from "./paths";
+import { DEFAULT_OPENCODE_BASE_URL, getStudioPaths } from "./paths";
+import { getStudioRuntimeSettings } from "./settings";
 import type { BookmarkResearchResult, OpencodeServerStatus } from "../../../packages/shared/src/types";
 
 interface HealthResponse {
@@ -79,10 +80,37 @@ const BOOKMARK_RESPONSE_SCHEMA = {
   required: ["title", "description", "thumbnailUrl", "source"]
 };
 
-const client = createOpencodeClient({
-  baseUrl: OPENCODE_BASE_URL,
-  throwOnError: true
-});
+async function getOpencodeConfig() {
+  const settings = await getStudioRuntimeSettings();
+
+  return {
+    baseUrl: settings.opencodeBaseUrl || DEFAULT_OPENCODE_BASE_URL,
+    command: settings.opencodeCommand.trim()
+  };
+}
+
+function getOpencodeClient(baseUrl: string) {
+  return createOpencodeClient({
+    baseUrl,
+    throwOnError: true
+  });
+}
+
+function getServerArguments(baseUrl: string) {
+  try {
+    const { hostname, port, protocol } = new URL(baseUrl);
+
+    return [
+      "serve",
+      "--port",
+      String(Number(port || (protocol === "https:" ? 443 : 80)) || 4096),
+      "--hostname",
+      hostname || "127.0.0.1"
+    ];
+  } catch {
+    return ["serve", "--port", "4096", "--hostname", "127.0.0.1"];
+  }
+}
 
 function unwrap<T>(response: PromptEnvelope<T> | T | undefined | null) {
   if (response && typeof response === "object" && "data" in response && response.data) {
@@ -256,8 +284,8 @@ export function normalizeBookmarkMetadata(url: string, metadata: BookmarkStructu
   };
 }
 
-async function getHealth() {
-  const response = await fetch(`${OPENCODE_BASE_URL}/global/health`);
+async function getHealth(baseUrl: string) {
+  const response = await fetch(`${baseUrl}/global/health`);
 
   if (!response.ok) {
     return null;
@@ -266,21 +294,30 @@ async function getHealth() {
   return (await response.json()) as HealthResponse;
 }
 
+export async function isOpencodeConfigured() {
+  return Boolean((await getOpencodeConfig()).command);
+}
+
 export async function isOpencodeHealthy() {
   try {
-    const health = await getHealth();
+    const { baseUrl } = await getOpencodeConfig();
+    const health = await getHealth(baseUrl);
     return Boolean(health?.healthy);
   } catch {
     return false;
   }
 }
 
-async function waitForServer(timeoutMs = 15000) {
+async function waitForServer(baseUrl: string, timeoutMs = 15000) {
   const startedAt = Date.now();
 
   while (Date.now() - startedAt < timeoutMs) {
-    if (await isOpencodeHealthy()) {
-      return true;
+    try {
+      if ((await getHealth(baseUrl))?.healthy) {
+        return true;
+      }
+    } catch {
+      // The server is still starting up.
     }
 
     await new Promise((resolve) => setTimeout(resolve, 350));
@@ -290,9 +327,15 @@ async function waitForServer(timeoutMs = 15000) {
 }
 
 export async function ensureOpencodeServer(): Promise<OpencodeServerStatus> {
+  const { baseUrl, command } = await getOpencodeConfig();
+
+  if (!command) {
+    throw new Error("Bookmark research is disabled. Save an OpenCode command in Settings to enable it.");
+  }
+
   if (await isOpencodeHealthy()) {
     return {
-      endpoint: OPENCODE_BASE_URL,
+      endpoint: baseUrl,
       startedByApp: false
     };
   }
@@ -302,8 +345,8 @@ export async function ensureOpencodeServer(): Promise<OpencodeServerStatus> {
   }
 
   startupPromise = new Promise<OpencodeServerStatus>((resolve, reject) => {
-    opencodeProcess = spawn("opencode", ["serve", "--port", String(OPENCODE_PORT), "--hostname", "127.0.0.1"], {
-      cwd: ROOT_DIR,
+    opencodeProcess = spawn(command, getServerArguments(baseUrl), {
+      cwd: getStudioPaths().userDataDir,
       windowsHide: true,
       stdio: ["ignore", "pipe", "pipe"]
     });
@@ -326,6 +369,12 @@ export async function ensureOpencodeServer(): Promise<OpencodeServerStatus> {
 
     opencodeProcess.on("error", (error) => {
       opencodeProcess = null;
+
+      if ((error as NodeJS.ErrnoException).code === "ENOENT") {
+        fail(new Error("Bookmark research needs the OpenCode CLI. Install it or point Settings at the executable."));
+        return;
+      }
+
       fail(error);
     });
 
@@ -337,7 +386,7 @@ export async function ensureOpencodeServer(): Promise<OpencodeServerStatus> {
       opencodeProcess = null;
     });
 
-    void waitForServer()
+    void waitForServer(baseUrl)
       .then(() => {
         if (settled) {
           return;
@@ -345,7 +394,7 @@ export async function ensureOpencodeServer(): Promise<OpencodeServerStatus> {
 
         settled = true;
         resolve({
-          endpoint: OPENCODE_BASE_URL,
+          endpoint: baseUrl,
           startedByApp: true
         });
       })
@@ -382,7 +431,8 @@ Rules:
 - Do not invent unavailable details or include extra prose outside the structured response.`;
 }
 
-async function resolveBookmarkMetadata(sessionID: string) {
+async function resolveBookmarkMetadata(sessionID: string, baseUrl: string) {
+  const client = getOpencodeClient(baseUrl);
   const startedAt = Date.now();
   let lastAssistantError = "";
 
@@ -426,6 +476,7 @@ async function resolveBookmarkMetadata(sessionID: string) {
 
 export async function researchBookmark(url: string, note = ""): Promise<BookmarkResearchResult> {
   const server = await ensureOpencodeServer();
+  const client = getOpencodeClient(server.endpoint);
   const createdSession = unwrap<SessionInfoResponse>(
     await client.session.create({ title: `Bookmark research: ${url}` }) as PromptEnvelope<SessionInfoResponse>
   );
@@ -445,7 +496,7 @@ export async function researchBookmark(url: string, note = ""): Promise<Bookmark
     }
   });
 
-  const structured = await resolveBookmarkMetadata(createdSession.id);
+  const structured = await resolveBookmarkMetadata(createdSession.id, server.endpoint);
 
   if (!structured) {
     throw new Error("OpenCode did not return bookmark metadata before timing out.");

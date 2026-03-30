@@ -5,10 +5,11 @@ import { app, BrowserWindow, ipcMain, shell } from "electron";
 
 import { getPublicSiteUrl, getSiteOverview, hasWriteKey, isConvexConfigured } from "../lib/convex";
 import { loadWorkspaceEnv } from "../lib/env";
-import { isOpencodeHealthy, shutdownOpencodeServer } from "../lib/opencode";
-import { ROOT_DIR, THUMBNAILS_DIR } from "../lib/paths";
+import { isOpencodeConfigured, isOpencodeHealthy, shutdownOpencodeServer } from "../lib/opencode";
+import { getStudioPaths } from "../lib/paths";
 import { publishBookmarkLink, publishPostDraft } from "../lib/publish";
-import { ensureWorkspaceDirectories } from "../lib/workspace";
+import { getStudioSettings, saveStudioSettings } from "../lib/settings";
+import { ensureStudioDirectories } from "../lib/workspace";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -18,8 +19,10 @@ const rendererUrl = process.env.ELECTRON_RENDERER_URL;
 let mainWindow: BrowserWindow | null = null;
 
 async function getStatusPayload() {
+  const { appPath, thumbnailsDir, userDataDir } = getStudioPaths();
   const opencodeReady = await isOpencodeHealthy();
-  const convexConfigured = isConvexConfigured();
+  const opencodeConfigured = await isOpencodeConfigured();
+  const convexConfigured = await isConvexConfigured();
 
   let convexReachable = false;
   let postCount = 0;
@@ -37,20 +40,34 @@ async function getStatusPayload() {
   }
 
   return {
-    rootDir: ROOT_DIR,
-    thumbnailsDir: THUMBNAILS_DIR,
-    publicSiteUrl: getPublicSiteUrl() || null,
+    appPath,
+    userDataDir,
+    thumbnailsDir,
+    publicSiteUrl: (await getPublicSiteUrl()) || null,
     convexConfigured,
     convexReachable,
-    writeKeyConfigured: hasWriteKey(),
+    writeKeyConfigured: await hasWriteKey(),
+    opencodeConfigured,
     opencodeReady,
     postCount,
     bookmarkCount
   };
 }
 
+async function getBootstrapPayload() {
+  return {
+    settings: await getStudioSettings(),
+    status: await getStatusPayload()
+  };
+}
+
 function registerIpc() {
+  ipcMain.handle("studio:get-bootstrap", async () => getBootstrapPayload());
   ipcMain.handle("studio:get-status", async () => getStatusPayload());
+  ipcMain.handle("studio:save-settings", async (_event, payload) => {
+    await saveStudioSettings(payload);
+    return getBootstrapPayload();
+  });
   ipcMain.handle("studio:publish-post", async (_event, payload) => publishPostDraft(payload));
   ipcMain.handle("studio:publish-bookmark", async (_event, payload) => publishBookmarkLink(payload));
   ipcMain.handle("studio:open-external", async (_event, url: string) => {
@@ -64,7 +81,7 @@ async function loadRenderer(window: BrowserWindow) {
     return;
   }
 
-  await window.loadFile(path.join(ROOT_DIR, "dist", "studio", "renderer", "index.html"));
+  await window.loadFile(getStudioPaths().rendererEntryPath);
 }
 
 function createWindow() {
@@ -106,7 +123,7 @@ function createWindow() {
 app.whenReady().then(async () => {
   app.setName("NarukeAlpha Post Studio");
   loadWorkspaceEnv();
-  await ensureWorkspaceDirectories();
+  await ensureStudioDirectories();
   registerIpc();
   createWindow();
 

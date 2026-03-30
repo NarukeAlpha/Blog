@@ -61,14 +61,15 @@ Tradeoff: this works, but it is more fragile than the tunnel route and creates a
 ## Convex deployment checklist
 
 1. Create the hosted Convex deployment.
-2. Put the deployment URL into both `VITE_CONVEX_URL` and `CONVEX_URL`.
+2. Put the deployment URL into `VITE_CONVEX_URL` for the site build.
 3. Generate a long random `STUDIO_WRITE_KEY`.
-4. Set the same key locally for Electron and in Convex:
+4. Set that key in Convex:
 
 ```bash
 npx convex env set STUDIO_WRITE_KEY "your-random-key"
 ```
 
-5. Run the site on the PC and the Electron app on the MacBook against that same deployment.
+5. In the packaged Electron studio, save the Convex URL, public site URL, and write key in Settings.
+6. Run the site on the PC and the Electron app on the MacBook against that same deployment.
 
 At that point the flow is simple: post from the MacBook, Convex updates immediately, and the Windows-hosted site reflects the change without a git push or rebuild.

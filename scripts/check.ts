@@ -1,7 +1,8 @@
 import { access } from "node:fs/promises";
 import path from "node:path";
 
-import { DEPLOYMENT_PLAN_FILE, ROOT_DIR, THUMBNAILS_DIR } from "../apps/studio/lib/paths";
+const ROOT_DIR = process.cwd();
+const DEPLOYMENT_PLAN_FILE = path.join(ROOT_DIR, "docs", "serve-on-windows.md");
 
 for (const requiredFile of [DEPLOYMENT_PLAN_FILE]) {
   await access(requiredFile);
@@ -16,6 +17,4 @@ for (const buildOutput of [
   await access(buildOutput);
 }
 
-await access(THUMBNAILS_DIR);
-
-console.log("Site bundle, studio bundle, deployment notes, and thumbnail cache are present.");
+console.log("Site bundle, studio bundle, and deployment notes are present.");

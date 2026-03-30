@@ -19,8 +19,8 @@ export async function publishPostDraft(payload: PostPublishPayload): Promise<Pos
     throw new Error("Posts need body content.");
   }
 
-  const post = await getConvexClient().mutation(api.posts.publish, {
-    apiKey: getStudioWriteKey(),
+  const post = await (await getConvexClient()).mutation(api.posts.publish, {
+    apiKey: await getStudioWriteKey(),
     title,
     body
   });
@@ -38,8 +38,8 @@ export async function publishBookmarkLink(payload: BookmarkPublishPayload): Prom
 
   const metadata = await researchBookmark(normalizedUrl, note);
 
-  const bookmark = await getConvexClient().action(api.bookmarks.publish, {
-    apiKey: getStudioWriteKey(),
+  const bookmark = await (await getConvexClient()).action(api.bookmarks.publish, {
+    apiKey: await getStudioWriteKey(),
     url: normalizedUrl,
     note,
     title: metadata.title,

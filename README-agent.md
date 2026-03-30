@@ -13,9 +13,10 @@ The website and the Electron studio now live in separate directories while shari
 ## Local setup
 
 1. Install dependencies with `npm install`.
-2. Install the OpenCode CLI and configure a model/provider for bookmark enrichment.
-3. Copy `.env.example` to `.env.local` and fill in the Convex URL, public site URL, and studio write key.
-4. Set `STUDIO_WRITE_KEY` inside the Convex deployment too.
+2. Install the OpenCode CLI and configure a model/provider if you want bookmark enrichment on that machine.
+3. Copy `.env.example` to `.env.local` if you want the site build and local Electron dev run to start with seeded defaults.
+4. Set `STUDIO_WRITE_KEY` inside the Convex deployment.
+5. In the packaged studio, save the Convex URL, public site URL, and local write key through the Settings screen.
 
 ## Scripts
 
@@ -24,7 +25,8 @@ The website and the Electron studio now live in separate directories while shari
 - `npm run dev:all` - run both app surfaces together.
 - `npm run build:site` - website bundle in `dist/site/`.
 - `npm run build:studio` - studio renderer plus Electron bundles in `dist/studio/`.
-- `npm run check` - typecheck, build both apps, and verify required docs/cache paths.
+- `npm run package:studio` - build macOS and Windows installers into `release/studio/`.
+- `npm run check` - typecheck, build both apps, and verify required docs/build outputs.
 - `npm test` - unit tests for shared content and thumbnail helpers.
 
 ## Publishing flow
@@ -40,6 +42,6 @@ The website and the Electron studio now live in separate directories while shari
 1. Submit a URL in the Electron studio.
 2. The app ensures `opencode serve` is reachable on `127.0.0.1:4096`.
 3. OpenCode returns structured bookmark metadata.
-4. Convex stores the bookmark and the studio mirrors the thumbnail into `apps/studio/cache/thumbnails/` when possible.
+4. Convex stores the bookmark and the studio mirrors the thumbnail into the local app-data thumbnail cache when possible.
 
-If Convex is misconfigured, the app fails loudly instead of pretending the content was published.
+If Convex is misconfigured, the app fails loudly instead of pretending the content was published. Bookmark enrichment is optional and can stay disabled on machines without OpenCode.

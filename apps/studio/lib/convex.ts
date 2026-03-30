@@ -1,48 +1,49 @@
 import { ConvexHttpClient } from "convex/browser";
 
 import { api } from "../../../convex/api";
+import { getStudioRuntimeSettings } from "./settings";
 
 let client: ConvexHttpClient | null = null;
 let clientUrl = "";
 
-function getConfiguredConvexUrl() {
-  return process.env.CONVEX_URL || process.env.VITE_CONVEX_URL || "";
+async function getConfiguredConvexUrl() {
+  return (await getStudioRuntimeSettings()).convexUrl;
 }
 
-function requireConvexUrl() {
-  const convexUrl = getConfiguredConvexUrl();
+async function requireConvexUrl() {
+  const convexUrl = await getConfiguredConvexUrl();
 
   if (!convexUrl) {
-    throw new Error("Set CONVEX_URL (or VITE_CONVEX_URL) before starting the studio.");
+    throw new Error("Save the Convex deployment URL in Settings before publishing.");
   }
 
   return convexUrl;
 }
 
-export function isConvexConfigured() {
-  return Boolean(getConfiguredConvexUrl());
+export async function isConvexConfigured() {
+  return Boolean(await getConfiguredConvexUrl());
 }
 
-export function hasWriteKey() {
-  return Boolean(process.env.STUDIO_WRITE_KEY);
+export async function hasWriteKey() {
+  return Boolean((await getStudioRuntimeSettings()).writeKey);
 }
 
-export function getStudioWriteKey() {
-  const writeKey = process.env.STUDIO_WRITE_KEY || "";
+export async function getStudioWriteKey() {
+  const writeKey = (await getStudioRuntimeSettings()).writeKey;
 
   if (!writeKey) {
-    throw new Error("Set STUDIO_WRITE_KEY in Electron and in the Convex deployment before publishing.");
+    throw new Error("Save the studio write key in Settings and in Convex before publishing.");
   }
 
   return writeKey;
 }
 
-export function getPublicSiteUrl() {
-  return process.env.PUBLIC_SITE_URL || process.env.VITE_PUBLIC_SITE_URL || "";
+export async function getPublicSiteUrl() {
+  return (await getStudioRuntimeSettings()).publicSiteUrl;
 }
 
-export function getConvexClient() {
-  const convexUrl = requireConvexUrl();
+export async function getConvexClient() {
+  const convexUrl = await requireConvexUrl();
 
   if (!client || clientUrl !== convexUrl) {
     client = new ConvexHttpClient(convexUrl);
@@ -53,5 +54,5 @@ export function getConvexClient() {
 }
 
 export async function getSiteOverview() {
-  return getConvexClient().query(api.site.overview, {});
+  return (await getConvexClient()).query(api.site.overview, {});
 }

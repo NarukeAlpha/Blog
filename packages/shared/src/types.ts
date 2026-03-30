@@ -1,13 +1,36 @@
+export interface StudioSettings {
+  convexUrl: string;
+  publicSiteUrl: string;
+  opencodeCommand: string;
+  opencodeBaseUrl: string;
+}
+
+export interface SaveStudioSettingsPayload {
+  convexUrl?: string;
+  publicSiteUrl?: string;
+  opencodeCommand?: string;
+  opencodeBaseUrl?: string;
+  writeKey?: string;
+  clearWriteKey?: boolean;
+}
+
 export interface StudioStatus {
-  rootDir: string;
+  appPath: string;
+  userDataDir: string;
   thumbnailsDir: string;
   publicSiteUrl: string | null;
   convexConfigured: boolean;
   convexReachable: boolean;
   writeKeyConfigured: boolean;
+  opencodeConfigured: boolean;
   opencodeReady: boolean;
   postCount: number;
   bookmarkCount: number;
+}
+
+export interface StudioBootstrap {
+  settings: StudioSettings;
+  status: StudioStatus;
 }
 
 export interface PostRecord {
@@ -59,7 +82,9 @@ export interface BookmarkPublishResult {
 
 export interface StudioBridge {
   platform: string;
+  getBootstrap: () => Promise<StudioBootstrap>;
   getStatus: () => Promise<StudioStatus>;
+  saveSettings: (payload: SaveStudioSettingsPayload) => Promise<StudioBootstrap>;
   publishPost: (payload: { title: string; body: string }) => Promise<PostPublishResult>;
   publishBookmark: (payload: { url: string; note: string }) => Promise<BookmarkPublishResult>;
   openExternal: (url: string) => Promise<void>;
