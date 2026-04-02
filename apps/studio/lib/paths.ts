@@ -61,7 +61,7 @@ export const STUDIO_DIR = path.join(ROOT_DIR, "apps", "studio");
 export const STUDIO_CACHE_DIR = path.join(STUDIO_DIR, "cache");
 export const THUMBNAILS_DIR = path.join(STUDIO_CACHE_DIR, "thumbnails");
 export const BOOKMARK_THUMBNAILS_DIR = path.join(THUMBNAILS_DIR, "bookmarks");
-export const DEPLOYMENT_PLAN_FILE = path.join(ROOT_DIR, "docs", "serve-on-windows.md");
+export const DEPLOYMENT_PLAN_FILE = path.join(ROOT_DIR, "docs", "deploy-site-on-cloudflare.md");
 
 export const OPENCODE_PORT = 4096;
 export const OPENCODE_BASE_URL = `http://127.0.0.1:${OPENCODE_PORT}`;

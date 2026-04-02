@@ -4,10 +4,12 @@ export interface StudioStatus {
   publicSiteUrl: string | null;
   convexConfigured: boolean;
   convexReachable: boolean;
-  writeKeyConfigured: boolean;
+  deployKeyConfigured: boolean;
   opencodeReady: boolean;
   postCount: number;
   bookmarkCount: number;
+  overview: SiteOverview | null;
+  overviewError: string | null;
 }
 
 export interface PostRecord {
@@ -19,21 +21,32 @@ export interface PostRecord {
   readingTimeMinutes: number;
 }
 
-export interface BookmarkRecord {
+export interface PostSummaryRecord {
+  slug: string;
+  title: string;
+  excerpt: string;
+  publishedAt: number;
+  readingTimeMinutes: number;
+}
+
+export interface PublicBookmarkRecord {
   url: string;
   title: string;
   description: string;
   source: string;
   thumbnailUrl: string;
-  note: string;
   addedAt: number;
+}
+
+export interface BookmarkRecord extends PublicBookmarkRecord {
+  note: string;
 }
 
 export interface SiteOverview {
   postCount: number;
   bookmarkCount: number;
-  latestPosts: PostRecord[];
-  latestBookmarks: BookmarkRecord[];
+  latestPosts: PostSummaryRecord[];
+  latestBookmarks: PublicBookmarkRecord[];
 }
 
 export interface PostPublishPayload {

@@ -1,7 +1,6 @@
 import { v } from "convex/values";
-import { mutationGeneric as mutation, queryGeneric as query } from "convex/server";
+import { internalMutation, internalQuery } from "./_generated/server";
 
-import { assertStudioWriteKey } from "./guards";
 import { createExcerpt, estimateReadingTimeMinutes } from "../packages/shared/src/site";
 import { createUniqueSlug } from "../packages/shared/src/slug";
 import { normalizeBody } from "../packages/shared/src/text";
@@ -24,7 +23,7 @@ function serializePost(post: {
   };
 }
 
-export const list = query({
+export const list = internalQuery({
   args: {},
   handler: async (ctx) => {
     const posts = await ctx.db.query("posts").withIndex("by_publishedAt").order("desc").collect();
@@ -32,15 +31,12 @@ export const list = query({
   }
 });
 
-export const publish = mutation({
+export const publish = internalMutation({
   args: {
-    apiKey: v.string(),
     title: v.string(),
     body: v.string()
   },
   handler: async (ctx, args) => {
-    assertStudioWriteKey(args.apiKey);
-
     const title = args.title.trim();
     const body = normalizeBody(args.body);
 

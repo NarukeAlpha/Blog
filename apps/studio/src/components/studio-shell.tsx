@@ -1,8 +1,6 @@
 import { FormEvent, useCallback, useEffect, useMemo, useState } from "react";
-import { useQuery } from "convex/react";
 import { ArrowUpRight, BookmarkPlus, BookOpenText, Database, FolderOpenDot, Globe2, HardDriveDownload, NotebookPen, Radio, RefreshCw, Sparkles, Wifi, WifiOff } from "lucide-react";
 
-import { api } from "@convex/api";
 import { Badge } from "@studio/components/ui/badge";
 import { Button } from "@studio/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@studio/components/ui/card";
@@ -10,7 +8,7 @@ import { Input } from "@studio/components/ui/input";
 import { Textarea } from "@studio/components/ui/textarea";
 import { cn } from "@studio/lib/utils";
 import { formatDate } from "@shared/text";
-import type { BookmarkPublishResult, PostPublishResult, SiteOverview, StudioBridge, StudioStatus } from "@shared/types";
+import type { BookmarkPublishResult, PostPublishResult, StudioBridge, StudioStatus } from "@shared/types";
 
 type ViewKey = "dashboard" | "post" | "bookmarks";
 type NoticeTone = "neutral" | "success" | "warning" | "error";
@@ -44,7 +42,6 @@ function shortenPath(filePath: string) {
 }
 
 export function StudioShell({ studio }: { studio: StudioBridge }) {
-  const overview = useQuery(api.site.overview, {}) as SiteOverview | undefined;
   const [view, setView] = useState<ViewKey>("dashboard");
   const [status, setStatus] = useState<StudioStatus | null>(null);
   const [loadingStatus, setLoadingStatus] = useState(true);
@@ -52,6 +49,30 @@ export function StudioShell({ studio }: { studio: StudioBridge }) {
   const [notice, setNotice] = useState<NoticeState | null>(null);
   const [postDraft, setPostDraft] = useState({ title: "", body: "" });
   const [bookmarkDraft, setBookmarkDraft] = useState({ url: "", note: "" });
+  const overview = status?.overview;
+  const overviewUnavailableMessage = useMemo(() => {
+    if (loadingStatus) {
+      return "Loading the live overview...";
+    }
+
+    if (status?.overviewError) {
+      return `Overview unavailable: ${status.overviewError}`;
+    }
+
+    if (!status?.convexConfigured) {
+      return "Add the Convex URL to load the live overview.";
+    }
+
+    if (!status.convexReachable) {
+      return "Reconnect to the hosted Convex deployment to load the live overview.";
+    }
+
+    if (!status.deployKeyConfigured) {
+      return "Add CONVEX_DEPLOY_KEY locally to load the live overview.";
+    }
+
+    return null;
+  }, [loadingStatus, status]);
 
   const showNotice = useCallback((title: string, detail: string, tone: NoticeTone = "neutral") => {
     setNotice({ title, detail, tone });
@@ -87,11 +108,19 @@ export function StudioShell({ studio }: { studio: StudioBridge }) {
 
   const metrics = useMemo(
     () => [
-      { label: "Posts", value: String(overview?.postCount ?? status?.postCount ?? 0), icon: BookOpenText },
-      { label: "Bookmarks", value: String(overview?.bookmarkCount ?? status?.bookmarkCount ?? 0), icon: BookmarkPlus },
+      {
+        label: "Posts",
+        value: loadingStatus ? "..." : overviewUnavailableMessage ? "Unavailable" : String(overview?.postCount ?? status?.postCount ?? 0),
+        icon: BookOpenText
+      },
+      {
+        label: "Bookmarks",
+        value: loadingStatus ? "..." : overviewUnavailableMessage ? "Unavailable" : String(overview?.bookmarkCount ?? status?.bookmarkCount ?? 0),
+        icon: BookmarkPlus
+      },
       { label: "Convex", value: status?.convexReachable ? "Live" : status?.convexConfigured ? "Check link" : "Missing", icon: Database }
     ],
-    [overview, status]
+    [loadingStatus, overview, overviewUnavailableMessage, status]
   );
 
   async function handlePostSubmit(event: FormEvent<HTMLFormElement>) {
@@ -247,32 +276,30 @@ export function StudioShell({ studio }: { studio: StudioBridge }) {
                 </CardHeader>
                 <CardContent className="grid gap-5 p-6">
                   <div className="glass-subtle rounded-[1.8rem] p-5">
-                    <p className="text-sm leading-7 text-muted-foreground">
-                      Write on the MacBook, hit publish, and Convex becomes the source of truth. The site reads the same deployment live, so the Windows box only has to serve the frontend bundle.
-                    </p>
-                  </div>
+                      <p className="text-sm leading-7 text-muted-foreground">Write locally, hit publish, and Convex becomes the source of truth. The public site reads the same hosted deployment live from Cloudflare.</p>
+                    </div>
 
                   <div className="grid gap-4 md:grid-cols-3">
                     {[
                       {
                         label: "Hosted backend",
                         detail: status?.convexReachable
-                          ? "Renderer and desktop app are talking to the same Convex deployment."
+                          ? "The studio can reach the same hosted Convex deployment the site uses."
                           : status?.convexConfigured
                             ? "Convex URL is set, but the deployment is not responding right now."
                             : "Add the Convex URL to .env.local before publishing.",
                         tone: status?.convexReachable ? "success" : status?.convexConfigured ? "warning" : "warning"
                       },
                       {
-                        label: "Write access",
-                        detail: status?.writeKeyConfigured
-                          ? "The studio has a write key and can create posts and bookmarks."
-                          : "Set STUDIO_WRITE_KEY locally and in Convex before sending mutations.",
-                        tone: status?.writeKeyConfigured ? "success" : "warning"
+                        label: "Studio auth",
+                        detail: status?.deployKeyConfigured
+                          ? "Electron has deploy-key auth and can call the internal Convex functions used by the studio."
+                          : "Set CONVEX_DEPLOY_KEY locally before loading overview data or publishing content.",
+                        tone: status?.deployKeyConfigured ? "success" : "warning"
                       },
                       {
                         label: "Serving plan",
-                        detail: "Cloudflare + Windows firewall notes live in docs/serve-on-windows.md.",
+                        detail: "Cloudflare deployment notes live in docs/deploy-site-on-cloudflare.md.",
                         tone: "neutral"
                       }
                     ].map((item) => (
@@ -304,6 +331,8 @@ export function StudioShell({ studio }: { studio: StudioBridge }) {
                           <p className="mt-2 text-sm text-muted-foreground">{post.excerpt}</p>
                         </div>
                       ))
+                    ) : overviewUnavailableMessage ? (
+                      <p className="text-sm text-muted-foreground">{overviewUnavailableMessage}</p>
                     ) : (
                       <p className="text-sm text-muted-foreground">No posts yet. The first publish will show up here.</p>
                     )}
@@ -326,6 +355,8 @@ export function StudioShell({ studio }: { studio: StudioBridge }) {
                           <p className="mt-2 text-sm text-muted-foreground">{bookmark.description}</p>
                         </div>
                       ))
+                    ) : overviewUnavailableMessage ? (
+                      <p className="text-sm text-muted-foreground">{overviewUnavailableMessage}</p>
                     ) : (
                       <p className="text-sm text-muted-foreground">Bookmark research results land here after OpenCode enriches them.</p>
                     )}
