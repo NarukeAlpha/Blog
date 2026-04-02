@@ -4,11 +4,12 @@ export interface StudioStatus {
   publicSiteUrl: string | null;
   convexConfigured: boolean;
   convexReachable: boolean;
-  writeKeyConfigured: boolean;
+  deployKeyConfigured: boolean;
   opencodeReady: boolean;
   postCount: number;
   bookmarkCount: number;
   overview: SiteOverview | null;
+  overviewError: string | null;
 }
 
 export interface PostRecord {

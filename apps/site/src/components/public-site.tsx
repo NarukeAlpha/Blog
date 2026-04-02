@@ -4,9 +4,9 @@ import { ArrowUpRight } from "lucide-react";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 
-import { api } from "@convex/api";
-import { formatDate } from "@shared/text";
+import { api } from "@convex/_generated/api";
 import type { PostRecord, PublicBookmarkRecord } from "@shared/types";
+import { formatDate } from "@shared/text";
 import "./public-site.css";
 
 function useActiveSlug(slugs: string[]) {
@@ -45,8 +45,8 @@ function useActiveSlug(slugs: string[]) {
 type ContentTab = "journal" | "bookmarks";
 
 export function PublicSite() {
-  const posts = (useQuery(api.public.listPosts, {}) ?? []) as PostRecord[];
-  const bookmarks = (useQuery(api.public.listBookmarks, {}) ?? []) as PublicBookmarkRecord[];
+  const posts: PostRecord[] = useQuery(api.public.listPosts, {}) ?? [];
+  const bookmarks: PublicBookmarkRecord[] = useQuery(api.public.listBookmarks, {}) ?? [];
   const [activeSlug, setActiveSlug] = useActiveSlug(posts.map((post) => post.slug));
   const activePost = useMemo(() => posts.find((post) => post.slug === activeSlug) ?? posts[0] ?? null, [activeSlug, posts]);
   const highlightedBookmarks = bookmarks.slice(0, 4);

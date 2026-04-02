@@ -1,4 +1,5 @@
 import { query } from "./_generated/server";
+import { serializePublicBookmark } from "./publicBookmarks";
 
 function serializePublicPost(post: {
   slug: string;
@@ -16,34 +17,6 @@ function serializePublicPost(post: {
     publishedAt: post.publishedAt,
     readingTimeMinutes: post.readingTimeMinutes
   };
-}
-
-function serializePublicBookmark(bookmark: {
-  url: string;
-  title: string;
-  description: string;
-  source: string;
-  addedAt: number;
-}, thumbnailUrl: string) {
-  return {
-    url: bookmark.url,
-    title: bookmark.title,
-    description: bookmark.description,
-    source: bookmark.source,
-    thumbnailUrl,
-    addedAt: bookmark.addedAt
-  };
-}
-
-async function resolveThumbnailUrl(
-  ctx: { storage: { getUrl: (storageId: string) => Promise<string | null> } },
-  bookmark: { thumbnailStorageId?: string; thumbnailSourceUrl?: string }
-) {
-  if (bookmark.thumbnailStorageId) {
-    return (await ctx.storage.getUrl(bookmark.thumbnailStorageId)) || bookmark.thumbnailSourceUrl || "";
-  }
-
-  return bookmark.thumbnailSourceUrl || "";
 }
 
 export const health = query({
@@ -64,8 +37,6 @@ export const listBookmarks = query({
   handler: async (ctx) => {
     const bookmarks = await ctx.db.query("bookmarks").withIndex("by_addedAt").order("desc").collect();
 
-    return Promise.all(
-      bookmarks.map(async (bookmark) => serializePublicBookmark(bookmark, await resolveThumbnailUrl(ctx, bookmark)))
-    );
+    return Promise.all(bookmarks.map((bookmark) => serializePublicBookmark(bookmark, (storageId) => ctx.storage.getUrl(storageId))));
   }
 });

@@ -1,52 +1,27 @@
 import { v } from "convex/values";
 
 import { internalMutation, internalQuery } from "./_generated/server";
+import { serializePublicBookmark } from "./publicBookmarks";
 
-function serializeBookmark(bookmark: {
-  url: string;
-  title: string;
-  description: string;
-  source: string;
-  note: string;
-  addedAt: number;
-}, thumbnailUrl: string) {
-  return {
-    url: bookmark.url,
-    title: bookmark.title,
-    description: bookmark.description,
-    source: bookmark.source,
-    note: bookmark.note,
-    addedAt: bookmark.addedAt,
-    thumbnailUrl
-  };
-}
-
-function serializePublicBookmark(bookmark: {
-  url: string;
-  title: string;
-  description: string;
-  source: string;
-  addedAt: number;
-}, thumbnailUrl: string) {
-  return {
-    url: bookmark.url,
-    title: bookmark.title,
-    description: bookmark.description,
-    source: bookmark.source,
-    thumbnailUrl,
-    addedAt: bookmark.addedAt
-  };
-}
-
-async function resolveThumbnailUrl(
-  ctx: { storage: { getUrl: (storageId: string) => Promise<string | null> } },
-  bookmark: { thumbnailStorageId?: string; thumbnailSourceUrl?: string }
+async function serializeBookmark<TStorageId extends string>(
+  bookmark: {
+    url: string;
+    title: string;
+    description: string;
+    source: string;
+    note: string;
+    addedAt: number;
+    thumbnailSourceUrl?: string;
+    thumbnailStorageId?: TStorageId;
+  },
+  getUrl: (storageId: TStorageId) => Promise<string | null>
 ) {
-  if (bookmark.thumbnailStorageId) {
-    return (await ctx.storage.getUrl(bookmark.thumbnailStorageId)) || bookmark.thumbnailSourceUrl || "";
-  }
+  const publicBookmark = await serializePublicBookmark(bookmark, getUrl);
 
-  return bookmark.thumbnailSourceUrl || "";
+  return {
+    ...publicBookmark,
+    note: bookmark.note
+  };
 }
 
 export const list = internalQuery({
@@ -54,9 +29,7 @@ export const list = internalQuery({
   handler: async (ctx) => {
     const bookmarks = await ctx.db.query("bookmarks").withIndex("by_addedAt").order("desc").collect();
 
-    return Promise.all(
-      bookmarks.map(async (bookmark) => serializePublicBookmark(bookmark, await resolveThumbnailUrl(ctx, bookmark)))
-    );
+    return Promise.all(bookmarks.map((bookmark) => serializePublicBookmark(bookmark, (storageId) => ctx.storage.getUrl(storageId))));
   }
 });
 
@@ -80,8 +53,8 @@ export const persist = internalMutation({
       source: args.source,
       note: args.note,
       addedAt: args.addedAt,
-      ...(args.thumbnailSourceUrl ? { thumbnailSourceUrl: args.thumbnailSourceUrl } : {}),
-      ...(args.thumbnailStorageId ? { thumbnailStorageId: args.thumbnailStorageId } : {})
+      thumbnailSourceUrl: args.thumbnailSourceUrl,
+      thumbnailStorageId: args.thumbnailStorageId
     };
 
     if (existing) {
@@ -107,6 +80,6 @@ export const byUrl = internalQuery({
       return null;
     }
 
-    return serializeBookmark(bookmark, await resolveThumbnailUrl(ctx, bookmark));
+    return serializeBookmark(bookmark, (storageId) => ctx.storage.getUrl(storageId));
   }
 });

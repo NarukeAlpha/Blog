@@ -1,7 +1,6 @@
 import { v } from "convex/values";
-import { internalQuery, mutation } from "./_generated/server";
+import { internalMutation, internalQuery } from "./_generated/server";
 
-import { assertStudioWriteKey } from "./guards";
 import { createExcerpt, estimateReadingTimeMinutes } from "../packages/shared/src/site";
 import { createUniqueSlug } from "../packages/shared/src/slug";
 import { normalizeBody } from "../packages/shared/src/text";
@@ -32,15 +31,12 @@ export const list = internalQuery({
   }
 });
 
-export const publish = mutation({
+export const publish = internalMutation({
   args: {
-    apiKey: v.string(),
     title: v.string(),
     body: v.string()
   },
   handler: async (ctx, args) => {
-    assertStudioWriteKey(args.apiKey);
-
     const title = args.title.trim();
     const body = normalizeBody(args.body);
 

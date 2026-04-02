@@ -50,6 +50,29 @@ export function StudioShell({ studio }: { studio: StudioBridge }) {
   const [postDraft, setPostDraft] = useState({ title: "", body: "" });
   const [bookmarkDraft, setBookmarkDraft] = useState({ url: "", note: "" });
   const overview = status?.overview;
+  const overviewUnavailableMessage = useMemo(() => {
+    if (loadingStatus) {
+      return "Loading the live overview...";
+    }
+
+    if (status?.overviewError) {
+      return `Overview unavailable: ${status.overviewError}`;
+    }
+
+    if (!status?.convexConfigured) {
+      return "Add the Convex URL to load the live overview.";
+    }
+
+    if (!status.convexReachable) {
+      return "Reconnect to the hosted Convex deployment to load the live overview.";
+    }
+
+    if (!status.deployKeyConfigured) {
+      return "Add CONVEX_DEPLOY_KEY locally to load the live overview.";
+    }
+
+    return null;
+  }, [loadingStatus, status]);
 
   const showNotice = useCallback((title: string, detail: string, tone: NoticeTone = "neutral") => {
     setNotice({ title, detail, tone });
@@ -85,11 +108,19 @@ export function StudioShell({ studio }: { studio: StudioBridge }) {
 
   const metrics = useMemo(
     () => [
-      { label: "Posts", value: String(overview?.postCount ?? status?.postCount ?? 0), icon: BookOpenText },
-      { label: "Bookmarks", value: String(overview?.bookmarkCount ?? status?.bookmarkCount ?? 0), icon: BookmarkPlus },
+      {
+        label: "Posts",
+        value: loadingStatus ? "..." : overviewUnavailableMessage ? "Unavailable" : String(overview?.postCount ?? status?.postCount ?? 0),
+        icon: BookOpenText
+      },
+      {
+        label: "Bookmarks",
+        value: loadingStatus ? "..." : overviewUnavailableMessage ? "Unavailable" : String(overview?.bookmarkCount ?? status?.bookmarkCount ?? 0),
+        icon: BookmarkPlus
+      },
       { label: "Convex", value: status?.convexReachable ? "Live" : status?.convexConfigured ? "Check link" : "Missing", icon: Database }
     ],
-    [overview, status]
+    [loadingStatus, overview, overviewUnavailableMessage, status]
   );
 
   async function handlePostSubmit(event: FormEvent<HTMLFormElement>) {
@@ -260,11 +291,11 @@ export function StudioShell({ studio }: { studio: StudioBridge }) {
                         tone: status?.convexReachable ? "success" : status?.convexConfigured ? "warning" : "warning"
                       },
                       {
-                        label: "Write access",
-                        detail: status?.writeKeyConfigured
-                          ? "The studio has a write key and can create posts and bookmarks."
-                          : "Set STUDIO_WRITE_KEY locally and in Convex before sending mutations.",
-                        tone: status?.writeKeyConfigured ? "success" : "warning"
+                        label: "Studio auth",
+                        detail: status?.deployKeyConfigured
+                          ? "Electron has deploy-key auth and can call the internal Convex functions used by the studio."
+                          : "Set CONVEX_DEPLOY_KEY locally before loading overview data or publishing content.",
+                        tone: status?.deployKeyConfigured ? "success" : "warning"
                       },
                       {
                         label: "Serving plan",
@@ -300,6 +331,8 @@ export function StudioShell({ studio }: { studio: StudioBridge }) {
                           <p className="mt-2 text-sm text-muted-foreground">{post.excerpt}</p>
                         </div>
                       ))
+                    ) : overviewUnavailableMessage ? (
+                      <p className="text-sm text-muted-foreground">{overviewUnavailableMessage}</p>
                     ) : (
                       <p className="text-sm text-muted-foreground">No posts yet. The first publish will show up here.</p>
                     )}
@@ -322,6 +355,8 @@ export function StudioShell({ studio }: { studio: StudioBridge }) {
                           <p className="mt-2 text-sm text-muted-foreground">{bookmark.description}</p>
                         </div>
                       ))
+                    ) : overviewUnavailableMessage ? (
+                      <p className="text-sm text-muted-foreground">{overviewUnavailableMessage}</p>
                     ) : (
                       <p className="text-sm text-muted-foreground">Bookmark research results land here after OpenCode enriches them.</p>
                     )}

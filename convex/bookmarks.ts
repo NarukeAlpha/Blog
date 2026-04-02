@@ -1,8 +1,7 @@
 import { v } from "convex/values";
-import { action } from "./_generated/server";
+import { internalAction } from "./_generated/server";
 
 import { api } from "./api";
-import { assertStudioWriteKey } from "./guards";
 import { normalizeBookmarkUrl } from "../packages/shared/src/site";
 
 async function storeRemoteThumbnail(
@@ -28,9 +27,8 @@ async function storeRemoteThumbnail(
   }
 }
 
-export const publish = action({
+export const publish = internalAction({
   args: {
-    apiKey: v.string(),
     url: v.string(),
     note: v.string(),
     title: v.string(),
@@ -39,8 +37,6 @@ export const publish = action({
     thumbnailSourceUrl: v.optional(v.string())
   },
   handler: async (ctx, args) => {
-    assertStudioWriteKey(args.apiKey);
-
     const url = normalizeBookmarkUrl(args.url);
     const hostname = new URL(url).hostname.replace(/^www\./, "");
     const thumbnailSourceUrl = String(args.thumbnailSourceUrl || "").trim();

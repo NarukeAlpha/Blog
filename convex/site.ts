@@ -1,7 +1,5 @@
-import { v } from "convex/values";
-
-import { query } from "./_generated/server";
-import { assertStudioWriteKey } from "./guards";
+import { internalQuery } from "./_generated/server";
+import { serializePublicBookmark } from "./publicBookmarks";
 
 function serializeOverviewPost(post: {
   slug: string;
@@ -19,30 +17,9 @@ function serializeOverviewPost(post: {
   };
 }
 
-function serializeOverviewBookmark(bookmark: {
-  url: string;
-  title: string;
-  description: string;
-  source: string;
-  addedAt: number;
-}, thumbnailUrl: string) {
-  return {
-    url: bookmark.url,
-    title: bookmark.title,
-    description: bookmark.description,
-    source: bookmark.source,
-    addedAt: bookmark.addedAt,
-    thumbnailUrl
-  };
-}
-
-export const overview = query({
-  args: {
-    apiKey: v.string()
-  },
-  handler: async (ctx, args) => {
-    assertStudioWriteKey(args.apiKey);
-
+export const overview = internalQuery({
+  args: {},
+  handler: async (ctx) => {
     const posts = await ctx.db.query("posts").withIndex("by_publishedAt").order("desc").take(3);
     const bookmarks = await ctx.db.query("bookmarks").withIndex("by_addedAt").order("desc").take(4);
 
@@ -51,14 +28,7 @@ export const overview = query({
       bookmarkCount: (await ctx.db.query("bookmarks").collect()).length,
       latestPosts: posts.map(serializeOverviewPost),
       latestBookmarks: await Promise.all(
-        bookmarks.map(async (bookmark) =>
-          serializeOverviewBookmark(
-            bookmark,
-            bookmark.thumbnailStorageId
-              ? (await ctx.storage.getUrl(bookmark.thumbnailStorageId)) || bookmark.thumbnailSourceUrl || ""
-              : bookmark.thumbnailSourceUrl || ""
-          )
-        )
+        bookmarks.map((bookmark) => serializePublicBookmark(bookmark, (storageId) => ctx.storage.getUrl(storageId)))
       )
     };
   }
