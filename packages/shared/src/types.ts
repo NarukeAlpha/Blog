@@ -1,5 +1,22 @@
+export interface StudioSettings {
+  convexUrl: string;
+  publicSiteUrl: string;
+  opencodeCommand: string;
+  opencodeBaseUrl: string;
+}
+
+export interface SaveStudioSettingsPayload {
+  convexUrl?: string;
+  publicSiteUrl?: string;
+  opencodeCommand?: string;
+  opencodeBaseUrl?: string;
+  deployKey?: string;
+  clearDeployKey?: boolean;
+}
+
 export interface StudioStatus {
-  rootDir: string;
+  appPath: string;
+  userDataDir: string;
   thumbnailsDir: string;
   publicSiteUrl: string | null;
   convexConfigured: boolean;
@@ -72,7 +89,9 @@ export interface BookmarkPublishResult {
 
 export interface StudioBridge {
   platform: string;
+  getBootstrap: () => Promise<StudioBootstrap>;
   getStatus: () => Promise<StudioStatus>;
+  saveSettings: (payload: SaveStudioSettingsPayload) => Promise<StudioBootstrap>;
   publishPost: (payload: { title: string; body: string }) => Promise<PostPublishResult>;
   publishBookmark: (payload: { url: string; note: string }) => Promise<BookmarkPublishResult>;
   openExternal: (url: string) => Promise<void>;

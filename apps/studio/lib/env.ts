@@ -1,7 +1,7 @@
 import { existsSync, readFileSync } from "node:fs";
 import path from "node:path";
 
-import { ROOT_DIR } from "./paths";
+import { app } from "electron";
 
 function parseEnvValue(rawValue: string) {
   const trimmed = rawValue.trim();
@@ -18,7 +18,7 @@ function parseEnvValue(rawValue: string) {
 }
 
 function loadEnvFile(fileName: string) {
-  const filePath = path.join(ROOT_DIR, fileName);
+  const filePath = path.join(app.getAppPath(), fileName);
 
   if (!existsSync(filePath)) {
     return;
@@ -51,6 +51,10 @@ function loadEnvFile(fileName: string) {
 }
 
 export function loadWorkspaceEnv() {
+  if (app.isPackaged) {
+    return;
+  }
+
   loadEnvFile(".env");
   loadEnvFile(".env.local");
 }

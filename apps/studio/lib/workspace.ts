@@ -1,8 +1,12 @@
 import { mkdir } from "node:fs/promises";
 
-import { BOOKMARK_THUMBNAILS_DIR, THUMBNAILS_DIR } from "./paths";
+import { getStudioPaths } from "./paths";
 
-export async function ensureWorkspaceDirectories() {
-  await mkdir(THUMBNAILS_DIR, { recursive: true });
-  await mkdir(BOOKMARK_THUMBNAILS_DIR, { recursive: true });
+export async function ensureStudioDirectories() {
+  const { cacheDir, thumbnailsDir, bookmarkThumbnailsDir, userDataDir } = getStudioPaths();
+
+  await mkdir(userDataDir, { recursive: true });
+  await mkdir(cacheDir, { recursive: true });
+  await mkdir(thumbnailsDir, { recursive: true });
+  await mkdir(bookmarkThumbnailsDir, { recursive: true });
 }

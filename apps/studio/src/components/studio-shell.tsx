@@ -19,10 +19,26 @@ interface NoticeState {
   tone: NoticeTone;
 }
 
+interface SettingsDraft {
+  convexUrl: string;
+  publicSiteUrl: string;
+  opencodeCommand: string;
+  opencodeBaseUrl: string;
+  deployKey: string;
+}
+
+interface StudioShellProps {
+  studio: StudioBridge;
+  settings: StudioSettings;
+  initialStatus: StudioStatus;
+  onBootstrapChange: (next: StudioBootstrap) => void;
+}
+
 const navItems: Array<{ key: ViewKey; label: string; icon: typeof Database }> = [
   { key: "dashboard", label: "Dashboard", icon: Database },
   { key: "post", label: "Post", icon: NotebookPen },
-  { key: "bookmarks", label: "Bookmarks", icon: BookmarkPlus }
+  { key: "bookmarks", label: "Bookmarks", icon: BookmarkPlus },
+  { key: "settings", label: "Settings", icon: Settings2 }
 ];
 
 const noticeToneClasses: Record<NoticeTone, string> = {
@@ -43,8 +59,8 @@ function shortenPath(filePath: string) {
 
 export function StudioShell({ studio }: { studio: StudioBridge }) {
   const [view, setView] = useState<ViewKey>("dashboard");
-  const [status, setStatus] = useState<StudioStatus | null>(null);
-  const [loadingStatus, setLoadingStatus] = useState(true);
+  const [status, setStatus] = useState<StudioStatus>(initialStatus);
+  const [loadingStatus, setLoadingStatus] = useState(false);
   const [busyView, setBusyView] = useState<ViewKey | null>(null);
   const [notice, setNotice] = useState<NoticeState | null>(null);
   const [postDraft, setPostDraft] = useState({ title: "", body: "" });
@@ -80,6 +96,8 @@ export function StudioShell({ studio }: { studio: StudioBridge }) {
 
   const refreshStatus = useCallback(
     async (silent = true) => {
+      setLoadingStatus(true);
+
       try {
         const next = await studio.getStatus();
         setStatus(next);
@@ -95,8 +113,6 @@ export function StudioShell({ studio }: { studio: StudioBridge }) {
   );
 
   useEffect(() => {
-    void refreshStatus(false);
-
     const interval = window.setInterval(() => {
       void refreshStatus();
     }, 15000);
@@ -122,6 +138,9 @@ export function StudioShell({ studio }: { studio: StudioBridge }) {
     ],
     [loadingStatus, overview, overviewUnavailableMessage, status]
   );
+
+  const canPublishPosts = status.convexConfigured && status.deployKeyConfigured;
+  const canPublishBookmarks = canPublishPosts && status.opencodeConfigured;
 
   async function handlePostSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -164,12 +183,42 @@ export function StudioShell({ studio }: { studio: StudioBridge }) {
     }
   }
 
+  async function handleSettingsSubmit(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    setBusyView("settings");
+
+    const payload: SaveStudioSettingsPayload = {
+      convexUrl: settingsDraft.convexUrl,
+      publicSiteUrl: settingsDraft.publicSiteUrl,
+      opencodeCommand: settingsDraft.opencodeCommand,
+      opencodeBaseUrl: settingsDraft.opencodeBaseUrl,
+      clearDeployKey
+    };
+
+    if (settingsDraft.deployKey.trim()) {
+      payload.deployKey = settingsDraft.deployKey;
+    }
+
+    try {
+      const next = await studio.saveSettings(payload);
+      onBootstrapChange(next);
+      setStatus(next.status);
+      setSettingsDraft(createSettingsDraft(next.settings));
+      setClearDeployKey(false);
+      showNotice("Settings saved", "Desktop settings were saved locally. Restarting the app is not required.", "success");
+    } catch (error) {
+      showNotice("Settings failed", getErrorMessage(error), "error");
+    } finally {
+      setBusyView(null);
+    }
+  }
+
   return (
-    <div className="min-h-screen px-4 pb-4 pt-12 text-foreground sm:px-6 relative overflow-hidden">
+    <div className="relative min-h-screen overflow-hidden px-4 pb-4 pt-12 text-foreground sm:px-6">
       <div className="stardust-overlay" />
-      <div className="orb w-[340px] h-[340px] -top-20 -left-32 opacity-40" />
-      <div className="orb orb-alt w-[260px] h-[260px] top-1/2 -right-24 opacity-30" />
-      <div className="orb-glow w-[200px] h-[200px] bottom-20 left-1/3 opacity-25" />
+      <div className="orb -left-32 -top-20 h-[340px] w-[340px] opacity-40" />
+      <div className="orb orb-alt top-1/2 -right-24 h-[260px] w-[260px] opacity-30" />
+      <div className="orb-glow bottom-20 left-1/3 h-[200px] w-[200px] opacity-25" />
       <div className="titlebar-drag fixed inset-x-0 top-0 z-50 h-12" />
 
       <div className="relative z-10 mx-auto grid max-w-7xl gap-4 xl:grid-cols-[260px_minmax(0,1fr)]">
@@ -181,7 +230,7 @@ export function StudioShell({ studio }: { studio: StudioBridge }) {
                 Studio
               </Badge>
               <div>
-                <CardTitle className="text-2xl bg-[linear-gradient(135deg,#fff_0%,#c4b5fd_50%,#00d2e6_100%)] bg-clip-text text-transparent">NarukeAlpha</CardTitle>
+                <CardTitle className="bg-[linear-gradient(135deg,#fff_0%,#c4b5fd_50%,#00d2e6_100%)] bg-clip-text text-2xl text-transparent">NarukeAlpha</CardTitle>
                 <p className="mt-1 text-sm text-muted-foreground">Local writing surface, hosted Convex sync.</p>
               </div>
             </div>
@@ -200,7 +249,7 @@ export function StudioShell({ studio }: { studio: StudioBridge }) {
                     variant={active ? "secondary" : "ghost"}
                     className={cn(
                       "justify-start",
-                      active && "bg-[linear-gradient(135deg,rgba(120,80,255,0.22),rgba(0,210,230,0.10))] border-[rgba(120,80,255,0.45)] shadow-[0_0_16px_rgba(120,80,255,0.18)]"
+                      active && "border-[rgba(120,80,255,0.45)] bg-[linear-gradient(135deg,rgba(120,80,255,0.22),rgba(0,210,230,0.10))] shadow-[0_0_16px_rgba(120,80,255,0.18)]"
                     )}
                     onClick={() => setView(item.key)}
                   >
@@ -227,18 +276,24 @@ export function StudioShell({ studio }: { studio: StudioBridge }) {
               })}
             </div>
 
-            <div className="mt-auto grid gap-3 glass-heavy rounded-[1.8rem] px-4 py-4 text-xs text-muted-foreground">
+            <div className="mt-auto grid gap-3 rounded-[1.8rem] px-4 py-4 text-xs text-muted-foreground glass-heavy">
               <div className="flex items-center gap-2">
                 <FolderOpenDot className="h-4 w-4 shrink-0" />
-                <span className="truncate">{status ? shortenPath(status.rootDir) : loadingStatus ? "Loading workspace" : "Unavailable"}</span>
+                <span className="truncate">{shortenPath(status.appPath)}</span>
               </div>
               <div className="flex items-center gap-2">
                 <HardDriveDownload className="h-4 w-4 shrink-0" />
-                <span className="truncate">{status ? shortenPath(status.thumbnailsDir) : "Waiting for cache path"}</span>
+                <span className="truncate">{shortenPath(status.userDataDir)}</span>
               </div>
-              <div className={cn("flex items-center gap-2", status?.opencodeReady ? "text-success" : "text-warning")}>
-                {status?.opencodeReady ? <Wifi className="h-4 w-4" /> : <WifiOff className="h-4 w-4" />}
-                <span>{status?.opencodeReady ? "OpenCode ready" : "OpenCode spins up on demand"}</span>
+              <div className={cn("flex items-center gap-2", status.opencodeReady ? "text-success" : status.opencodeConfigured ? "text-warning" : "text-muted-foreground")}>
+                {status.opencodeReady ? <Wifi className="h-4 w-4" /> : <WifiOff className="h-4 w-4" />}
+                <span>
+                  {status.opencodeReady
+                    ? "OpenCode ready"
+                    : status.opencodeConfigured
+                      ? "OpenCode starts on demand"
+                      : "Bookmark research disabled"}
+                </span>
               </div>
             </div>
           </CardContent>
@@ -259,13 +314,13 @@ export function StudioShell({ studio }: { studio: StudioBridge }) {
                   <div className="flex flex-wrap items-center justify-between gap-3">
                     <div>
                       <Badge variant="outline" className="w-fit">Overview</Badge>
-                      <CardTitle className="mt-3 text-3xl bg-[linear-gradient(135deg,#fff,#c4b5fd)] bg-clip-text text-transparent">The live publishing loop</CardTitle>
+                      <CardTitle className="mt-3 bg-[linear-gradient(135deg,#fff,#c4b5fd)] bg-clip-text text-3xl text-transparent">The live publishing loop</CardTitle>
                     </div>
                     <div className="flex items-center gap-2">
-                      <Button variant="outline" size="icon" onClick={() => void refreshStatus(false)} aria-label="Refresh studio status">
-                        <RefreshCw className="h-4 w-4" />
+                      <Button variant="outline" size="icon" onClick={() => void refreshStatus(false)} aria-label="Refresh studio status" disabled={loadingStatus}>
+                        <RefreshCw className={cn("h-4 w-4", loadingStatus && "animate-spin")} />
                       </Button>
-                      {status?.publicSiteUrl ? (
+                      {status.publicSiteUrl ? (
                         <Button size="sm" onClick={() => void studio.openExternal(status.publicSiteUrl!)}>
                           <ArrowUpRight className="h-4 w-4" />
                           Open site
@@ -303,7 +358,7 @@ export function StudioShell({ studio }: { studio: StudioBridge }) {
                         tone: "neutral"
                       }
                     ].map((item) => (
-                      <div key={item.label} className="glass-subtle rounded-[1.6rem] p-4 transition-all duration-200 hover:bg-[rgba(120,80,255,0.08)] hover:border-[rgba(120,80,255,0.3)]">
+                      <div key={item.label} className="glass-subtle rounded-[1.6rem] p-4 transition-all duration-200 hover:border-[rgba(120,80,255,0.3)] hover:bg-[rgba(120,80,255,0.08)]">
                         <Badge variant={item.tone === "success" ? "success" : item.tone === "warning" ? "warning" : "outline"} className="w-fit">
                           {item.label}
                         </Badge>
@@ -311,6 +366,13 @@ export function StudioShell({ studio }: { studio: StudioBridge }) {
                       </div>
                     ))}
                   </div>
+
+                  {!status.convexConfigured || !status.deployKeyConfigured ? (
+                    <div className="flex flex-wrap items-center justify-between gap-3 rounded-[1.6rem] border border-amber-400/20 bg-amber-400/10 p-4 text-sm text-amber-100">
+                      <p>Publishing is blocked until the desktop app has a Convex URL and deploy key.</p>
+                      <Button variant="outline" onClick={() => setView("settings")}>Open settings</Button>
+                    </div>
+                  ) : null}
                 </CardContent>
               </Card>
 
@@ -318,12 +380,12 @@ export function StudioShell({ studio }: { studio: StudioBridge }) {
                 <Card>
                   <CardHeader className="pb-3">
                     <Badge variant="outline" className="w-fit">Recent posts</Badge>
-                    <CardTitle className="text-2xl bg-[linear-gradient(135deg,#fff,#c4b5fd)] bg-clip-text text-transparent">Fresh posts</CardTitle>
+                    <CardTitle className="bg-[linear-gradient(135deg,#fff,#c4b5fd)] bg-clip-text text-2xl text-transparent">Fresh posts</CardTitle>
                   </CardHeader>
                   <CardContent className="grid gap-3">
                     {overview?.latestPosts?.length ? (
                       overview.latestPosts.map((post) => (
-                        <div key={post.slug} className="glass-subtle rounded-[1.5rem] p-4 transition-all duration-200 hover:bg-[rgba(120,80,255,0.08)] hover:border-[rgba(120,80,255,0.3)]">
+                        <div key={post.slug} className="glass-subtle rounded-[1.5rem] p-4 transition-all duration-200 hover:border-[rgba(120,80,255,0.3)] hover:bg-[rgba(120,80,255,0.08)]">
                           <div className="flex items-center justify-between gap-3">
                             <p className="font-medium text-foreground">{post.title}</p>
                             <span className="font-mono text-xs uppercase tracking-[0.18em] text-muted-foreground">{post.readingTimeMinutes} min</span>
@@ -334,7 +396,9 @@ export function StudioShell({ studio }: { studio: StudioBridge }) {
                     ) : overviewUnavailableMessage ? (
                       <p className="text-sm text-muted-foreground">{overviewUnavailableMessage}</p>
                     ) : (
-                      <p className="text-sm text-muted-foreground">No posts yet. The first publish will show up here.</p>
+                      <p className="text-sm text-muted-foreground">
+                        {status.convexConfigured ? "No posts yet. The first publish will show up here." : "Save the Convex URL in Settings to load live post data."}
+                      </p>
                     )}
                   </CardContent>
                 </Card>
@@ -342,12 +406,12 @@ export function StudioShell({ studio }: { studio: StudioBridge }) {
                 <Card>
                   <CardHeader className="pb-3">
                     <Badge variant="outline" className="w-fit">Bookmarks</Badge>
-                    <CardTitle className="text-2xl bg-[linear-gradient(135deg,#fff,#c4b5fd)] bg-clip-text text-transparent">Latest saves</CardTitle>
+                    <CardTitle className="bg-[linear-gradient(135deg,#fff,#c4b5fd)] bg-clip-text text-2xl text-transparent">Latest saves</CardTitle>
                   </CardHeader>
                   <CardContent className="grid gap-3">
                     {overview?.latestBookmarks?.length ? (
                       overview.latestBookmarks.map((bookmark) => (
-                        <div key={bookmark.url} className="glass-subtle rounded-[1.5rem] p-4 transition-all duration-200 hover:bg-[rgba(120,80,255,0.08)] hover:border-[rgba(120,80,255,0.3)]">
+                        <div key={bookmark.url} className="glass-subtle rounded-[1.5rem] p-4 transition-all duration-200 hover:border-[rgba(120,80,255,0.3)] hover:bg-[rgba(120,80,255,0.08)]">
                           <div className="flex items-center justify-between gap-3">
                             <p className="font-medium text-foreground">{bookmark.title}</p>
                             <span className="font-mono text-xs uppercase tracking-[0.18em] text-muted-foreground">{formatDate(bookmark.addedAt)}</span>
@@ -358,7 +422,9 @@ export function StudioShell({ studio }: { studio: StudioBridge }) {
                     ) : overviewUnavailableMessage ? (
                       <p className="text-sm text-muted-foreground">{overviewUnavailableMessage}</p>
                     ) : (
-                      <p className="text-sm text-muted-foreground">Bookmark research results land here after OpenCode enriches them.</p>
+                      <p className="text-sm text-muted-foreground">
+                        {status.convexConfigured ? "Bookmark research results land here after a successful publish." : "Connect Convex in Settings before loading bookmark history."}
+                      </p>
                     )}
                   </CardContent>
                 </Card>
@@ -374,12 +440,18 @@ export function StudioShell({ studio }: { studio: StudioBridge }) {
                     <NotebookPen className="h-3.5 w-3.5" />
                     Post
                   </Badge>
-                  <CardTitle className="text-3xl bg-[linear-gradient(135deg,#fff,#c4b5fd)] bg-clip-text text-transparent">Ship a new post</CardTitle>
+                  <CardTitle className="bg-[linear-gradient(135deg,#fff,#c4b5fd)] bg-clip-text text-3xl text-transparent">Ship a new post</CardTitle>
                 </div>
               </CardHeader>
 
               <CardContent>
                 <form className="grid gap-4" onSubmit={handlePostSubmit}>
+                  {!canPublishPosts ? (
+                    <div className="rounded-[1.6rem] border border-amber-400/20 bg-amber-400/10 p-4 text-sm text-amber-100">
+                      Save a Convex URL and deploy key in Settings before publishing posts.
+                    </div>
+                  ) : null}
+
                   <Input
                     placeholder="Give the post a title"
                     value={postDraft.title}
@@ -395,7 +467,7 @@ export function StudioShell({ studio }: { studio: StudioBridge }) {
                   />
 
                   <div className="flex justify-end">
-                    <Button type="submit" disabled={busyView === "post"} className="hover:shadow-[0_0_20px_rgba(0,210,230,0.25)]">
+                    <Button type="submit" disabled={busyView === "post" || !canPublishPosts} className="hover:shadow-[0_0_20px_rgba(0,210,230,0.25)]">
                       {busyView === "post" ? "Publishing..." : "Publish to Convex"}
                     </Button>
                   </div>
@@ -412,12 +484,22 @@ export function StudioShell({ studio }: { studio: StudioBridge }) {
                     <Sparkles className="h-3.5 w-3.5" />
                     Bookmark
                   </Badge>
-                  <CardTitle className="text-3xl bg-[linear-gradient(135deg,#fff,#c4b5fd)] bg-clip-text text-transparent">Research and publish a link</CardTitle>
+                  <CardTitle className="bg-[linear-gradient(135deg,#fff,#c4b5fd)] bg-clip-text text-3xl text-transparent">Research and publish a link</CardTitle>
                 </div>
               </CardHeader>
 
               <CardContent>
                 <form className="grid gap-4" onSubmit={handleBookmarkSubmit}>
+                  {!status.opencodeConfigured ? (
+                    <div className="rounded-[1.6rem] border border-cyan-400/20 bg-cyan-400/10 p-4 text-sm text-cyan-100">
+                      Bookmark research is optional. Save an OpenCode command in Settings to enable this view.
+                    </div>
+                  ) : !canPublishPosts ? (
+                    <div className="rounded-[1.6rem] border border-amber-400/20 bg-amber-400/10 p-4 text-sm text-amber-100">
+                      Save a Convex URL and deploy key in Settings before publishing bookmarks.
+                    </div>
+                  ) : null}
+
                   <Input
                     type="url"
                     placeholder="https://..."
@@ -437,8 +519,103 @@ export function StudioShell({ studio }: { studio: StudioBridge }) {
                       <Globe2 className="h-3.5 w-3.5" />
                       OpenCode enriches metadata, Convex keeps it synced
                     </Badge>
-                    <Button type="submit" disabled={busyView === "bookmarks"} className="hover:shadow-[0_0_20px_rgba(0,210,230,0.25)]">
+                    <Button type="submit" disabled={busyView === "bookmarks" || !canPublishBookmarks} className="hover:shadow-[0_0_20px_rgba(0,210,230,0.25)]">
                       {busyView === "bookmarks" ? "Publishing..." : "Publish bookmark"}
+                    </Button>
+                  </div>
+                </form>
+              </CardContent>
+            </Card>
+          ) : null}
+
+          {view === "settings" ? (
+            <Card>
+              <CardHeader className="pb-4">
+                <div className="flex items-center gap-3">
+                  <Badge className="gap-2">
+                    <Settings2 className="h-3.5 w-3.5" />
+                    Settings
+                  </Badge>
+                  <CardTitle className="bg-[linear-gradient(135deg,#fff,#c4b5fd)] bg-clip-text text-3xl text-transparent">Desktop runtime settings</CardTitle>
+                </div>
+              </CardHeader>
+
+              <CardContent>
+                <form className="grid gap-5" onSubmit={handleSettingsSubmit}>
+                  <div className="grid gap-4 lg:grid-cols-2">
+                    <div className="grid gap-2">
+                      <label className="text-sm font-medium text-foreground">Convex deployment URL</label>
+                      <Input
+                        placeholder="https://your-team.convex.cloud"
+                        value={settingsDraft.convexUrl}
+                        onChange={(event) => setSettingsDraft((current) => ({ ...current, convexUrl: event.target.value }))}
+                      />
+                    </div>
+
+                    <div className="grid gap-2">
+                      <label className="text-sm font-medium text-foreground">Public site URL</label>
+                      <Input
+                        placeholder="https://blog.example.com"
+                        value={settingsDraft.publicSiteUrl}
+                        onChange={(event) => setSettingsDraft((current) => ({ ...current, publicSiteUrl: event.target.value }))}
+                      />
+                    </div>
+                  </div>
+
+                  <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_auto]">
+                    <div className="grid gap-2">
+                      <label className="flex items-center gap-2 text-sm font-medium text-foreground">
+                        <KeyRound className="h-4 w-4" />
+                        Convex deploy key
+                      </label>
+                      <Input
+                        type="password"
+                        placeholder={status.deployKeyConfigured && !clearDeployKey ? "Saved locally. Enter a new key to replace it." : "Paste the deploy key"}
+                        value={settingsDraft.deployKey}
+                        onChange={(event) => setSettingsDraft((current) => ({ ...current, deployKey: event.target.value }))}
+                      />
+                    </div>
+
+                    <div className="flex items-end">
+                      <Button type="button" variant="outline" onClick={() => setClearDeployKey((current) => !current)}>
+                        {clearDeployKey ? "Keep saved key" : "Clear saved key"}
+                      </Button>
+                    </div>
+                  </div>
+
+                  <div className="grid gap-4 lg:grid-cols-2">
+                    <div className="grid gap-2">
+                      <label className="text-sm font-medium text-foreground">OpenCode command</label>
+                      <Input
+                        placeholder="opencode"
+                        value={settingsDraft.opencodeCommand}
+                        onChange={(event) => setSettingsDraft((current) => ({ ...current, opencodeCommand: event.target.value }))}
+                      />
+                      <p className="text-xs text-muted-foreground">Leave this blank to disable bookmark enrichment on this machine.</p>
+                    </div>
+
+                    <div className="grid gap-2">
+                      <label className="text-sm font-medium text-foreground">OpenCode base URL</label>
+                      <Input
+                        placeholder="http://127.0.0.1:4096"
+                        value={settingsDraft.opencodeBaseUrl}
+                        onChange={(event) => setSettingsDraft((current) => ({ ...current, opencodeBaseUrl: event.target.value }))}
+                      />
+                    </div>
+                  </div>
+
+                  <div className="grid gap-3 rounded-[1.8rem] p-5 glass-subtle">
+                    <p className="text-sm leading-7 text-muted-foreground">
+                      Desktop settings are stored under <code>{status.userDataDir}</code>. The deploy key stays local to this installation, while Convex remains the shared content source across machines.
+                    </p>
+                    <p className="text-sm leading-7 text-muted-foreground">
+                      Cached bookmark thumbnails are mirrored into <code>{status.thumbnailsDir}</code> so the app never needs a writable copy of the repo.
+                    </p>
+                  </div>
+
+                  <div className="flex justify-end">
+                    <Button type="submit" disabled={busyView === "settings"} className="hover:shadow-[0_0_20px_rgba(0,210,230,0.25)]">
+                      {busyView === "settings" ? "Saving..." : "Save desktop settings"}
                     </Button>
                   </div>
                 </form>

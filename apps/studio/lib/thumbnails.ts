@@ -2,8 +2,8 @@ import { createHash } from "node:crypto";
 import { writeFile } from "node:fs/promises";
 import path from "node:path";
 
-import { BOOKMARK_THUMBNAILS_DIR, ROOT_DIR } from "./paths";
-import { ensureWorkspaceDirectories } from "./workspace";
+import { getStudioPaths } from "./paths";
+import { ensureStudioDirectories } from "./workspace";
 
 const KNOWN_IMAGE_EXTENSIONS = new Set(["png", "jpg", "jpeg", "gif", "webp", "svg", "avif"]);
 
@@ -50,10 +50,11 @@ export async function mirrorThumbnailToPublic(sourceUrl: string) {
   const extension = getImageExtension(contentType, sourceUrl);
   const fileName = `${createHash("sha1").update(sourceUrl).digest("hex").slice(0, 16)}.${extension}`;
 
-  await ensureWorkspaceDirectories();
+  await ensureStudioDirectories();
 
-  const filePath = path.join(BOOKMARK_THUMBNAILS_DIR, fileName);
+  const { bookmarkThumbnailsDir } = getStudioPaths();
+  const filePath = path.join(bookmarkThumbnailsDir, fileName);
   await writeFile(filePath, buffer);
 
-  return path.relative(ROOT_DIR, filePath).split(path.sep).join("/");
+  return filePath;
 }

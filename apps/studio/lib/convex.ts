@@ -9,22 +9,22 @@ let privilegedClient: ConvexHttpClient | null = null;
 let privilegedClientUrl = "";
 let privilegedClientDeployKey = "";
 
-function getConfiguredConvexUrl() {
-  return process.env.CONVEX_URL || process.env.VITE_CONVEX_URL || "";
+async function getConfiguredConvexUrl() {
+  return (await getStudioRuntimeSettings()).convexUrl;
 }
 
-function requireConvexUrl() {
-  const convexUrl = getConfiguredConvexUrl();
+async function requireConvexUrl() {
+  const convexUrl = await getConfiguredConvexUrl();
 
   if (!convexUrl) {
-    throw new Error("Set CONVEX_URL (or VITE_CONVEX_URL) before starting the studio.");
+    throw new Error("Save the Convex deployment URL in Settings before publishing.");
   }
 
   return convexUrl;
 }
 
-export function isConvexConfigured() {
-  return Boolean(getConfiguredConvexUrl());
+export async function isConvexConfigured() {
+  return Boolean(await getConfiguredConvexUrl());
 }
 
 export function hasDeployKey() {
@@ -46,12 +46,12 @@ export function getDeployKey() {
   return deployKey;
 }
 
-export function getPublicSiteUrl() {
-  return process.env.PUBLIC_SITE_URL || process.env.VITE_PUBLIC_SITE_URL || "";
+export async function getPublicSiteUrl() {
+  return (await getStudioRuntimeSettings()).publicSiteUrl;
 }
 
-export function getConvexClient() {
-  const convexUrl = requireConvexUrl();
+export async function getConvexClient() {
+  const convexUrl = await requireConvexUrl();
 
   if (!client || clientUrl !== convexUrl) {
     client = new ConvexHttpClient(convexUrl);

@@ -1,17 +1,26 @@
-import { existsSync } from "node:fs";
 import path from "node:path";
-import { fileURLToPath } from "node:url";
 
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = path.dirname(__filename);
+import { app } from "electron";
 
-function looksLikeWorkspace(directory: string) {
-  return (
-    existsSync(path.join(directory, "package.json")) &&
-    existsSync(path.join(directory, "apps", "site")) &&
-    existsSync(path.join(directory, "apps", "studio")) &&
-    existsSync(path.join(directory, "convex"))
-  );
+export const DEFAULT_OPENCODE_COMMAND = "opencode";
+export const DEFAULT_OPENCODE_BASE_URL = "http://127.0.0.1:4096";
+
+export function getStudioPaths() {
+  const appPath = app.getAppPath();
+  const userDataDir = app.getPath("userData");
+  const cacheDir = path.join(userDataDir, "cache");
+  const thumbnailsDir = path.join(cacheDir, "thumbnails");
+  const bookmarkThumbnailsDir = path.join(thumbnailsDir, "bookmarks");
+
+  return {
+    appPath,
+    userDataDir,
+    cacheDir,
+    thumbnailsDir,
+    bookmarkThumbnailsDir,
+    settingsFile: path.join(userDataDir, "settings.json"),
+    rendererEntryPath: path.join(appPath, "dist", "studio", "renderer", "index.html")
+  };
 }
 
 function resolveWorkspaceRoot() {
