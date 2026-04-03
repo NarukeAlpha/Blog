@@ -40,7 +40,7 @@ async function getStatusPayload() {
     }
   }
 
-  if (convexReachable && deployKeyConfigured) {
+  if (convexReachable && hasDeployKey()) {
     try {
       overview = await getSiteOverview();
       postCount = overview.postCount;
@@ -58,20 +58,12 @@ async function getStatusPayload() {
     publicSiteUrl: (await getPublicSiteUrl()) || null,
     convexConfigured,
     convexReachable,
-    deployKeyConfigured,
-    opencodeConfigured,
+    deployKeyConfigured: hasDeployKey(),
     opencodeReady,
     postCount,
     bookmarkCount,
     overview,
     overviewError
-  };
-}
-
-async function getBootstrapPayload() {
-  return {
-    settings: await getStudioSettings(),
-    status: await getStatusPayload()
   };
 }
 

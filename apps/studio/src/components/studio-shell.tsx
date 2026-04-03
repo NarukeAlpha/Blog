@@ -1,21 +1,5 @@
 import { FormEvent, useCallback, useEffect, useMemo, useState } from "react";
-import {
-  ArrowUpRight,
-  BookmarkPlus,
-  BookOpenText,
-  Database,
-  FolderOpenDot,
-  Globe2,
-  HardDriveDownload,
-  KeyRound,
-  NotebookPen,
-  Radio,
-  RefreshCw,
-  Settings2,
-  Sparkles,
-  Wifi,
-  WifiOff
-} from "lucide-react";
+import { ArrowUpRight, BookmarkPlus, BookOpenText, Database, FolderOpenDot, Globe2, HardDriveDownload, NotebookPen, Radio, RefreshCw, Sparkles, Wifi, WifiOff } from "lucide-react";
 
 import { Badge } from "@studio/components/ui/badge";
 import { Button } from "@studio/components/ui/button";
@@ -24,17 +8,9 @@ import { Input } from "@studio/components/ui/input";
 import { Textarea } from "@studio/components/ui/textarea";
 import { cn } from "@studio/lib/utils";
 import { formatDate } from "@shared/text";
-import type {
-  BookmarkPublishResult,
-  PostPublishResult,
-  SaveStudioSettingsPayload,
-  StudioBootstrap,
-  StudioBridge,
-  StudioSettings,
-  StudioStatus
-} from "@shared/types";
+import type { BookmarkPublishResult, PostPublishResult, StudioBridge, StudioStatus } from "@shared/types";
 
-type ViewKey = "dashboard" | "post" | "bookmarks" | "settings";
+type ViewKey = "dashboard" | "post" | "bookmarks";
 type NoticeTone = "neutral" | "success" | "warning" | "error";
 
 interface NoticeState {
@@ -81,17 +57,7 @@ function shortenPath(filePath: string) {
   return parts.slice(-3).join("/");
 }
 
-function createSettingsDraft(settings: StudioSettings): SettingsDraft {
-  return {
-    convexUrl: settings.convexUrl,
-    publicSiteUrl: settings.publicSiteUrl,
-    opencodeCommand: settings.opencodeCommand,
-    opencodeBaseUrl: settings.opencodeBaseUrl,
-    deployKey: ""
-  };
-}
-
-export function StudioShell({ studio, settings, initialStatus, onBootstrapChange }: StudioShellProps) {
+export function StudioShell({ studio }: { studio: StudioBridge }) {
   const [view, setView] = useState<ViewKey>("dashboard");
   const [status, setStatus] = useState<StudioStatus>(initialStatus);
   const [loadingStatus, setLoadingStatus] = useState(false);
@@ -99,30 +65,18 @@ export function StudioShell({ studio, settings, initialStatus, onBootstrapChange
   const [notice, setNotice] = useState<NoticeState | null>(null);
   const [postDraft, setPostDraft] = useState({ title: "", body: "" });
   const [bookmarkDraft, setBookmarkDraft] = useState({ url: "", note: "" });
-  const [settingsDraft, setSettingsDraft] = useState<SettingsDraft>(() => createSettingsDraft(settings));
-  const [clearDeployKey, setClearDeployKey] = useState(false);
-
-  useEffect(() => {
-    setStatus(initialStatus);
-  }, [initialStatus]);
-
-  useEffect(() => {
-    setSettingsDraft(createSettingsDraft(settings));
-    setClearDeployKey(false);
-  }, [settings]);
-
-  const overview = status.overview;
+  const overview = status?.overview;
   const overviewUnavailableMessage = useMemo(() => {
     if (loadingStatus) {
       return "Loading the live overview...";
     }
 
-    if (status.overviewError) {
+    if (status?.overviewError) {
       return `Overview unavailable: ${status.overviewError}`;
     }
 
-    if (!status.convexConfigured) {
-      return "Save the Convex URL in Settings to load the live overview.";
+    if (!status?.convexConfigured) {
+      return "Add the Convex URL to load the live overview.";
     }
 
     if (!status.convexReachable) {
@@ -130,7 +84,7 @@ export function StudioShell({ studio, settings, initialStatus, onBootstrapChange
     }
 
     if (!status.deployKeyConfigured) {
-      return "Save the Convex deploy key in Settings to load the live overview.";
+      return "Add CONVEX_DEPLOY_KEY locally to load the live overview.";
     }
 
     return null;
@@ -172,15 +126,15 @@ export function StudioShell({ studio, settings, initialStatus, onBootstrapChange
     () => [
       {
         label: "Posts",
-        value: loadingStatus ? "..." : overviewUnavailableMessage ? "Unavailable" : String(overview?.postCount ?? status.postCount ?? 0),
+        value: loadingStatus ? "..." : overviewUnavailableMessage ? "Unavailable" : String(overview?.postCount ?? status?.postCount ?? 0),
         icon: BookOpenText
       },
       {
         label: "Bookmarks",
-        value: loadingStatus ? "..." : overviewUnavailableMessage ? "Unavailable" : String(overview?.bookmarkCount ?? status.bookmarkCount ?? 0),
+        value: loadingStatus ? "..." : overviewUnavailableMessage ? "Unavailable" : String(overview?.bookmarkCount ?? status?.bookmarkCount ?? 0),
         icon: BookmarkPlus
       },
-      { label: "Convex", value: status.convexReachable ? "Live" : status.convexConfigured ? "Check link" : "Missing", icon: Database }
+      { label: "Convex", value: status?.convexReachable ? "Live" : status?.convexConfigured ? "Check link" : "Missing", icon: Database }
     ],
     [loadingStatus, overview, overviewUnavailableMessage, status]
   );
@@ -377,35 +331,31 @@ export function StudioShell({ studio, settings, initialStatus, onBootstrapChange
                 </CardHeader>
                 <CardContent className="grid gap-5 p-6">
                   <div className="glass-subtle rounded-[1.8rem] p-5">
-                    <p className="text-sm leading-7 text-muted-foreground">
-                      This desktop app keeps its own settings, deploy key, and cache under your local app data folder. Convex stays the shared source of truth, so you can move between machines without syncing the repo.
-                    </p>
-                  </div>
+                      <p className="text-sm leading-7 text-muted-foreground">Write locally, hit publish, and Convex becomes the source of truth. The public site reads the same hosted deployment live from Cloudflare.</p>
+                    </div>
 
                   <div className="grid gap-4 md:grid-cols-3">
                     {[
                       {
                         label: "Hosted backend",
-                        detail: status.convexReachable
-                          ? "The desktop app is talking to the saved Convex deployment."
-                          : status.convexConfigured
-                            ? "A Convex URL is saved, but the deployment is not responding right now."
-                            : "Save the Convex deployment URL in Settings before publishing.",
-                        tone: status.convexReachable ? "success" : "warning"
+                        detail: status?.convexReachable
+                          ? "The studio can reach the same hosted Convex deployment the site uses."
+                          : status?.convexConfigured
+                            ? "Convex URL is set, but the deployment is not responding right now."
+                            : "Add the Convex URL to .env.local before publishing.",
+                        tone: status?.convexReachable ? "success" : status?.convexConfigured ? "warning" : "warning"
                       },
                       {
                         label: "Studio auth",
-                        detail: status.deployKeyConfigured
+                        detail: status?.deployKeyConfigured
                           ? "Electron has deploy-key auth and can call the internal Convex functions used by the studio."
-                          : "Save the Convex deploy key locally before loading overview data or publishing content.",
-                        tone: status.deployKeyConfigured ? "success" : "warning"
+                          : "Set CONVEX_DEPLOY_KEY locally before loading overview data or publishing content.",
+                        tone: status?.deployKeyConfigured ? "success" : "warning"
                       },
                       {
-                        label: "Bookmark research",
-                        detail: status.opencodeConfigured
-                          ? "Bookmarks can start OpenCode from the saved command when needed."
-                          : "Bookmarks are optional. Save an OpenCode command in Settings to enable enrichment.",
-                        tone: status.opencodeConfigured ? "neutral" : "warning"
+                        label: "Serving plan",
+                        detail: "Cloudflare deployment notes live in docs/deploy-site-on-cloudflare.md.",
+                        tone: "neutral"
                       }
                     ].map((item) => (
                       <div key={item.label} className="glass-subtle rounded-[1.6rem] p-4 transition-all duration-200 hover:border-[rgba(120,80,255,0.3)] hover:bg-[rgba(120,80,255,0.08)]">

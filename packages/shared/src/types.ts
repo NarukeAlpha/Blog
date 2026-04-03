@@ -22,17 +22,11 @@ export interface StudioStatus {
   convexConfigured: boolean;
   convexReachable: boolean;
   deployKeyConfigured: boolean;
-  opencodeConfigured: boolean;
   opencodeReady: boolean;
   postCount: number;
   bookmarkCount: number;
   overview: SiteOverview | null;
   overviewError: string | null;
-}
-
-export interface StudioBootstrap {
-  settings: StudioSettings;
-  status: StudioStatus;
 }
 
 export interface PostRecord {

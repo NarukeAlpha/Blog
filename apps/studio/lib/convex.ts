@@ -2,7 +2,6 @@ import { ConvexHttpClient, type HttpMutationOptions } from "convex/browser";
 import type { ArgsAndOptions, FunctionReference, FunctionReturnType, OptionalRestArgs } from "convex/server";
 
 import { api, internal } from "../../../convex/_generated/api";
-import { getStudioRuntimeSettings } from "./settings";
 
 let client: ConvexHttpClient | null = null;
 let clientUrl = "";
@@ -28,8 +27,8 @@ export async function isConvexConfigured() {
   return Boolean(await getConfiguredConvexUrl());
 }
 
-export async function hasDeployKey() {
-  return Boolean((await getStudioRuntimeSettings()).deployKey);
+export function hasDeployKey() {
+  return Boolean(process.env.CONVEX_DEPLOY_KEY);
 }
 
 function setConvexAdminAuth(client: ConvexHttpClient, token: string) {
@@ -37,11 +36,11 @@ function setConvexAdminAuth(client: ConvexHttpClient, token: string) {
   (client as ConvexHttpClient & { setAdminAuth: (value: string) => void }).setAdminAuth(token);
 }
 
-export async function getDeployKey() {
-  const deployKey = (await getStudioRuntimeSettings()).deployKey;
+export function getDeployKey() {
+  const deployKey = process.env.CONVEX_DEPLOY_KEY || "";
 
   if (!deployKey) {
-    throw new Error("Save the Convex deploy key in Settings before publishing.");
+    throw new Error("Set CONVEX_DEPLOY_KEY in Electron before loading studio-only Convex functions.");
   }
 
   return deployKey;
@@ -62,9 +61,9 @@ export async function getConvexClient() {
   return client;
 }
 
-export async function getPrivilegedConvexClient() {
-  const convexUrl = await requireConvexUrl();
-  const deployKey = await getDeployKey();
+export function getPrivilegedConvexClient() {
+  const convexUrl = requireConvexUrl();
+  const deployKey = getDeployKey();
 
   if (!privilegedClient || privilegedClientUrl !== convexUrl || privilegedClientDeployKey !== deployKey) {
     privilegedClient = new ConvexHttpClient(convexUrl);
@@ -78,11 +77,11 @@ export async function getPrivilegedConvexClient() {
 
 // Convex's public client types only accept public refs, even though admin auth
 // can execute internal functions. Keep that escape hatch isolated here.
-export async function runPrivilegedQuery<Query extends FunctionReference<"query", "internal">>(
+export function runPrivilegedQuery<Query extends FunctionReference<"query", "internal">>(
   query: Query,
   ...args: OptionalRestArgs<Query>
 ) {
-  const client = await getPrivilegedConvexClient();
+  const client = getPrivilegedConvexClient();
 
   return (client.query as unknown as (
     query: Query,
@@ -90,11 +89,11 @@ export async function runPrivilegedQuery<Query extends FunctionReference<"query"
   ) => Promise<FunctionReturnType<Query>>)(query, ...args);
 }
 
-export async function runPrivilegedMutation<Mutation extends FunctionReference<"mutation", "internal">>(
+export function runPrivilegedMutation<Mutation extends FunctionReference<"mutation", "internal">>(
   mutation: Mutation,
   ...args: ArgsAndOptions<Mutation, HttpMutationOptions>
 ) {
-  const client = await getPrivilegedConvexClient();
+  const client = getPrivilegedConvexClient();
 
   return (client.mutation as unknown as (
     mutation: Mutation,
@@ -102,11 +101,11 @@ export async function runPrivilegedMutation<Mutation extends FunctionReference<"
   ) => Promise<FunctionReturnType<Mutation>>)(mutation, ...args);
 }
 
-export async function runPrivilegedAction<Action extends FunctionReference<"action", "internal">>(
+export function runPrivilegedAction<Action extends FunctionReference<"action", "internal">>(
   action: Action,
   ...args: OptionalRestArgs<Action>
 ) {
-  const client = await getPrivilegedConvexClient();
+  const client = getPrivilegedConvexClient();
 
   return (client.action as unknown as (
     action: Action,
@@ -115,7 +114,7 @@ export async function runPrivilegedAction<Action extends FunctionReference<"acti
 }
 
 export async function isConvexReachable() {
-  await (await getConvexClient()).query(api.public.health, {});
+  await getConvexClient().query(api.public.health, {});
   return true;
 }
 
