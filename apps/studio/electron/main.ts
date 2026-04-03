@@ -3,7 +3,7 @@ import { fileURLToPath } from "node:url";
 
 import { app, BrowserWindow, ipcMain, shell } from "electron";
 
-import { getPublicSiteUrl, getSiteOverview, hasWriteKey, isConvexConfigured } from "../lib/convex";
+import { getPublicSiteUrl, getSiteOverview, hasDeployKey, isConvexConfigured, isConvexReachable } from "../lib/convex";
 import { loadWorkspaceEnv } from "../lib/env";
 import { isOpencodeConfigured, isOpencodeHealthy, shutdownOpencodeServer } from "../lib/opencode";
 import { getStudioPaths } from "../lib/paths";
@@ -23,19 +23,31 @@ async function getStatusPayload() {
   const opencodeReady = await isOpencodeHealthy();
   const opencodeConfigured = await isOpencodeConfigured();
   const convexConfigured = await isConvexConfigured();
+  const deployKeyConfigured = await hasDeployKey();
 
   let convexReachable = false;
   let postCount = 0;
   let bookmarkCount = 0;
+  let overview = null;
+  let overviewError = null;
 
   if (convexConfigured) {
     try {
-      const overview = await getSiteOverview();
+      await isConvexReachable();
       convexReachable = true;
-      postCount = overview.postCount;
-      bookmarkCount = overview.bookmarkCount;
     } catch {
       convexReachable = false;
+    }
+  }
+
+  if (convexReachable && deployKeyConfigured) {
+    try {
+      overview = await getSiteOverview();
+      postCount = overview.postCount;
+      bookmarkCount = overview.bookmarkCount;
+    } catch (error) {
+      overview = null;
+      overviewError = error instanceof Error ? error.message : "Failed to load site overview.";
     }
   }
 
@@ -46,11 +58,13 @@ async function getStatusPayload() {
     publicSiteUrl: (await getPublicSiteUrl()) || null,
     convexConfigured,
     convexReachable,
-    writeKeyConfigured: await hasWriteKey(),
+    deployKeyConfigured,
     opencodeConfigured,
     opencodeReady,
     postCount,
-    bookmarkCount
+    bookmarkCount,
+    overview,
+    overviewError
   };
 }
 

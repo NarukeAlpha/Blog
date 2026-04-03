@@ -1,10 +1,8 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
-import { ConvexProvider, ConvexReactClient, useQuery } from "convex/react";
+import { useCallback, useEffect, useState } from "react";
 import { AppWindow, LoaderCircle } from "lucide-react";
 
-import { api } from "@convex/api";
 import { StudioShell } from "@studio/components/studio-shell";
-import type { SiteOverview, StudioBootstrap, StudioBridge } from "@shared/types";
+import type { StudioBootstrap, StudioBridge } from "@shared/types";
 
 function getErrorMessage(error: unknown) {
   return error instanceof Error ? error.message : "Something went wrong while booting the studio.";
@@ -42,12 +40,6 @@ function LoadingShell({ detail }: { detail: string }) {
   );
 }
 
-function ConnectedStudio({ bootstrap, studio, onBootstrapChange }: { bootstrap: StudioBootstrap; studio: StudioBridge; onBootstrapChange: (next: StudioBootstrap) => void }) {
-  const overview = useQuery(api.site.overview, {}) as SiteOverview | undefined;
-
-  return <StudioShell studio={studio} settings={bootstrap.settings} initialStatus={bootstrap.status} overview={overview} onBootstrapChange={onBootstrapChange} />;
-}
-
 function App() {
   const studio = window.studio as StudioBridge | undefined;
   const [bootstrap, setBootstrap] = useState<StudioBootstrap | null>(null);
@@ -71,14 +63,6 @@ function App() {
     void refreshBootstrap();
   }, [refreshBootstrap]);
 
-  const convexClient = useMemo(() => {
-    if (!bootstrap?.settings.convexUrl) {
-      return null;
-    }
-
-    return new ConvexReactClient(bootstrap.settings.convexUrl);
-  }, [bootstrap?.settings.convexUrl]);
-
   if (!studio) {
     return <MissingBridge />;
   }
@@ -87,15 +71,7 @@ function App() {
     return <LoadingShell detail={bootError} />;
   }
 
-  if (!convexClient) {
-    return <StudioShell studio={studio} settings={bootstrap.settings} initialStatus={bootstrap.status} overview={undefined} onBootstrapChange={setBootstrap} />;
-  }
-
-  return (
-    <ConvexProvider client={convexClient} key={bootstrap.settings.convexUrl}>
-      <ConnectedStudio bootstrap={bootstrap} studio={studio} onBootstrapChange={setBootstrap} />
-    </ConvexProvider>
-  );
+  return <StudioShell studio={studio} settings={bootstrap.settings} initialStatus={bootstrap.status} onBootstrapChange={setBootstrap} />;
 }
 
 export default App;

@@ -1,6 +1,6 @@
-import { api } from "../../../convex/api";
+import { internal } from "../../../convex/_generated/api";
 
-import { getConvexClient, getStudioWriteKey } from "./convex";
+import { runPrivilegedAction, runPrivilegedMutation } from "./convex";
 import { researchBookmark } from "./opencode";
 import { mirrorThumbnailToPublic } from "./thumbnails";
 import { normalizeBookmarkUrl } from "../../../packages/shared/src/site";
@@ -19,8 +19,7 @@ export async function publishPostDraft(payload: PostPublishPayload): Promise<Pos
     throw new Error("Posts need body content.");
   }
 
-  const post = await (await getConvexClient()).mutation(api.posts.publish, {
-    apiKey: await getStudioWriteKey(),
+  const post = await runPrivilegedMutation(internal.posts.publish, {
     title,
     body
   });
@@ -38,8 +37,7 @@ export async function publishBookmarkLink(payload: BookmarkPublishPayload): Prom
 
   const metadata = await researchBookmark(normalizedUrl, note);
 
-  const bookmark = await (await getConvexClient()).action(api.bookmarks.publish, {
-    apiKey: await getStudioWriteKey(),
+  const bookmark = await runPrivilegedAction(internal.bookmarks.publish, {
     url: normalizedUrl,
     note,
     title: metadata.title,

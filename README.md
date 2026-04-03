@@ -16,4 +16,4 @@ Useful scripts:
 - `npm run package:studio`
 - `npm run check`
 
-The packaged studio now keeps its own settings and cache in the OS app-data directory instead of reading from the repo at runtime.
+The packaged studio now keeps its own settings, deploy key, and cache in the OS app-data directory instead of reading from the repo at runtime.

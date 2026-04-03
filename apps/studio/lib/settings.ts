@@ -12,12 +12,14 @@ interface StoredStudioSettings {
   publicSiteUrl?: string;
   opencodeCommand?: string;
   opencodeBaseUrl?: string;
+  encryptedDeployKey?: string;
+  plaintextDeployKey?: string;
   encryptedWriteKey?: string;
   plaintextWriteKey?: string;
 }
 
 export interface StudioRuntimeSettings extends StudioSettings {
-  writeKey: string;
+  deployKey: string;
 }
 
 const SETTINGS_VERSION = 1;
@@ -32,7 +34,7 @@ function getEnvironmentDefaults() {
     publicSiteUrl: normalizeString(process.env.PUBLIC_SITE_URL || process.env.VITE_PUBLIC_SITE_URL),
     opencodeCommand: normalizeString(process.env.OPENCODE_COMMAND) || DEFAULT_OPENCODE_COMMAND,
     opencodeBaseUrl: normalizeString(process.env.OPENCODE_BASE_URL) || DEFAULT_OPENCODE_BASE_URL,
-    writeKey: normalizeString(process.env.STUDIO_WRITE_KEY)
+    deployKey: normalizeString(process.env.CONVEX_DEPLOY_KEY)
   };
 }
 
@@ -57,19 +59,41 @@ function resolveStoredString(storedValue: unknown, fallback: string) {
   return typeof storedValue === "string" ? storedValue.trim() : fallback;
 }
 
-function decodeStoredWriteKey(stored: StoredStudioSettings, fallback: string) {
-  if (typeof stored.encryptedWriteKey === "string") {
-    if (!stored.encryptedWriteKey) {
-      return "";
-    }
+function decodeStoredSecret(storedValue: string | undefined) {
+  if (typeof storedValue !== "string") {
+    return null;
+  }
 
-    try {
-      if (safeStorage.isEncryptionAvailable()) {
-        return safeStorage.decryptString(Buffer.from(stored.encryptedWriteKey, "base64")).trim();
-      }
-    } catch {
-      return "";
+  if (!storedValue) {
+    return "";
+  }
+
+  try {
+    if (safeStorage.isEncryptionAvailable()) {
+      return safeStorage.decryptString(Buffer.from(storedValue, "base64")).trim();
     }
+  } catch {
+    return "";
+  }
+
+  return null;
+}
+
+function decodeStoredDeployKey(stored: StoredStudioSettings, fallback: string) {
+  const encryptedDeployKey = decodeStoredSecret(stored.encryptedDeployKey);
+
+  if (encryptedDeployKey !== null) {
+    return encryptedDeployKey;
+  }
+
+  if (typeof stored.plaintextDeployKey === "string") {
+    return stored.plaintextDeployKey.trim();
+  }
+
+  const encryptedWriteKey = decodeStoredSecret(stored.encryptedWriteKey);
+
+  if (encryptedWriteKey !== null) {
+    return encryptedWriteKey;
   }
 
   if (typeof stored.plaintextWriteKey === "string") {
@@ -87,7 +111,7 @@ function toRuntimeSettings(stored: StoredStudioSettings): StudioRuntimeSettings 
     publicSiteUrl: resolveStoredString(stored.publicSiteUrl, defaults.publicSiteUrl),
     opencodeCommand: resolveStoredString(stored.opencodeCommand, defaults.opencodeCommand),
     opencodeBaseUrl: resolveStoredString(stored.opencodeBaseUrl, defaults.opencodeBaseUrl),
-    writeKey: decodeStoredWriteKey(stored, defaults.writeKey)
+    deployKey: decodeStoredDeployKey(stored, defaults.deployKey)
   };
 }
 
@@ -104,24 +128,24 @@ function normalizeSavePayload(payload: SaveStudioSettingsPayload | null | undefi
   return payload && typeof payload === "object" ? payload : {};
 }
 
-function encodeWriteKey(writeKey: string) {
-  if (!writeKey) {
+function encodeDeployKey(deployKey: string) {
+  if (!deployKey) {
     return {
-      encryptedWriteKey: "",
-      plaintextWriteKey: ""
+      encryptedDeployKey: "",
+      plaintextDeployKey: ""
     };
   }
 
   if (safeStorage.isEncryptionAvailable()) {
     return {
-      encryptedWriteKey: safeStorage.encryptString(writeKey).toString("base64"),
-      plaintextWriteKey: undefined
+      encryptedDeployKey: safeStorage.encryptString(deployKey).toString("base64"),
+      plaintextDeployKey: undefined
     };
   }
 
   return {
-    encryptedWriteKey: undefined,
-    plaintextWriteKey: writeKey
+    encryptedDeployKey: undefined,
+    plaintextDeployKey: deployKey
   };
 }
 
@@ -137,8 +161,8 @@ export async function saveStudioSettings(payload: SaveStudioSettingsPayload) {
   const input = normalizeSavePayload(payload);
   const stored = await readStoredSettings();
   const current = toRuntimeSettings(stored);
-  const nextWriteKey = input.clearWriteKey ? "" : typeof input.writeKey === "string" ? input.writeKey.trim() : current.writeKey;
-  const encodedWriteKey = encodeWriteKey(nextWriteKey);
+  const nextDeployKey = input.clearDeployKey ? "" : typeof input.deployKey === "string" ? input.deployKey.trim() : current.deployKey;
+  const encodedDeployKey = encodeDeployKey(nextDeployKey);
 
   const nextStored: StoredStudioSettings = {
     version: SETTINGS_VERSION,
@@ -146,7 +170,7 @@ export async function saveStudioSettings(payload: SaveStudioSettingsPayload) {
     publicSiteUrl: typeof input.publicSiteUrl === "string" ? input.publicSiteUrl.trim() : current.publicSiteUrl,
     opencodeCommand: typeof input.opencodeCommand === "string" ? input.opencodeCommand.trim() : current.opencodeCommand,
     opencodeBaseUrl: typeof input.opencodeBaseUrl === "string" ? input.opencodeBaseUrl.trim() : current.opencodeBaseUrl,
-    ...encodedWriteKey
+    ...encodedDeployKey
   };
 
   await ensureStudioDirectories();
@@ -157,6 +181,6 @@ export async function saveStudioSettings(payload: SaveStudioSettingsPayload) {
     publicSiteUrl: nextStored.publicSiteUrl || "",
     opencodeCommand: nextStored.opencodeCommand || "",
     opencodeBaseUrl: nextStored.opencodeBaseUrl || DEFAULT_OPENCODE_BASE_URL,
-    writeKey: nextWriteKey
+    deployKey: nextDeployKey
   });
 }

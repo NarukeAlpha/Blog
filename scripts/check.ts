@@ -2,7 +2,7 @@ import { access } from "node:fs/promises";
 import path from "node:path";
 
 const ROOT_DIR = process.cwd();
-const DEPLOYMENT_PLAN_FILE = path.join(ROOT_DIR, "docs", "serve-on-windows.md");
+const DEPLOYMENT_PLAN_FILE = path.join(ROOT_DIR, "docs", "deploy-site-on-cloudflare.md");
 
 for (const requiredFile of [DEPLOYMENT_PLAN_FILE]) {
   await access(requiredFile);
