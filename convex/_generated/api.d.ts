@@ -11,10 +11,12 @@
 import type * as api_ from "../api.js";
 import type * as bookmarkInternals from "../bookmarkInternals.js";
 import type * as bookmarks from "../bookmarks.js";
+import type * as http from "../http.js";
 import type * as posts from "../posts.js";
 import type * as public_ from "../public.js";
 import type * as publicBookmarks from "../publicBookmarks.js";
 import type * as site from "../site.js";
+import type * as studioAuth from "../studioAuth.js";
 
 import type {
   ApiFromModules,
@@ -26,10 +28,12 @@ declare const fullApi: ApiFromModules<{
   api: typeof api_;
   bookmarkInternals: typeof bookmarkInternals;
   bookmarks: typeof bookmarks;
+  http: typeof http;
   posts: typeof posts;
   public: typeof public_;
   publicBookmarks: typeof publicBookmarks;
   site: typeof site;
+  studioAuth: typeof studioAuth;
 }>;
 
 /**
