@@ -1,7 +1,12 @@
-import { AppWindow } from "lucide-react";
+import { useCallback, useEffect, useState } from "react";
+import { AppWindow, LoaderCircle } from "lucide-react";
 
 import { StudioShell } from "@studio/components/studio-shell";
-import type { StudioBridge } from "@shared/types";
+import type { StudioBootstrap, StudioBridge } from "@shared/types";
+
+function getErrorMessage(error: unknown) {
+  return error instanceof Error ? error.message : "Something went wrong while booting the studio.";
+}
 
 function MissingBridge() {
   return (
@@ -62,7 +67,11 @@ function App() {
     return <MissingBridge />;
   }
 
-  return <StudioShell studio={studio} />;
+  if (!bootstrap) {
+    return <LoadingShell detail={bootError} />;
+  }
+
+  return <StudioShell studio={studio} settings={bootstrap.settings} initialStatus={bootstrap.status} onBootstrapChange={setBootstrap} />;
 }
 
 export default App;

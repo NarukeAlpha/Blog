@@ -3,7 +3,13 @@ import { readFile, writeFile } from "node:fs/promises";
 import { safeStorage } from "electron";
 
 import type { SaveStudioSettingsPayload, StudioSettings } from "../../../packages/shared/src/types";
-import { DEFAULT_OPENCODE_BASE_URL, DEFAULT_OPENCODE_COMMAND, getStudioPaths } from "./paths";
+import {
+  DEFAULT_OPENCODE_BASE_URL,
+  DEFAULT_OPENCODE_COMMAND,
+  DEFAULT_OPENCODE_MODEL_ID,
+  DEFAULT_OPENCODE_PROVIDER_ID,
+  getStudioPaths
+} from "./paths";
 import { ensureStudioDirectories } from "./workspace";
 
 interface StoredStudioSettings {
@@ -12,6 +18,8 @@ interface StoredStudioSettings {
   publicSiteUrl?: string;
   opencodeCommand?: string;
   opencodeBaseUrl?: string;
+  opencodeProviderId?: string;
+  opencodeModelId?: string;
   encryptedDeployKey?: string;
   plaintextDeployKey?: string;
   encryptedWriteKey?: string;
@@ -34,7 +42,9 @@ function getEnvironmentDefaults() {
     publicSiteUrl: normalizeString(process.env.PUBLIC_SITE_URL || process.env.VITE_PUBLIC_SITE_URL),
     opencodeCommand: normalizeString(process.env.OPENCODE_COMMAND) || DEFAULT_OPENCODE_COMMAND,
     opencodeBaseUrl: normalizeString(process.env.OPENCODE_BASE_URL) || DEFAULT_OPENCODE_BASE_URL,
-    deployKey: normalizeString(process.env.CONVEX_DEPLOY_KEY)
+    opencodeProviderId: normalizeString(process.env.OPENCODE_PROVIDER_ID) || DEFAULT_OPENCODE_PROVIDER_ID,
+    opencodeModelId: normalizeString(process.env.OPENCODE_MODEL_ID) || DEFAULT_OPENCODE_MODEL_ID,
+    deployKey: normalizeString(process.env.STUDIO_WRITE_KEY || process.env.CONVEX_DEPLOY_KEY)
   };
 }
 
@@ -57,6 +67,11 @@ async function readStoredSettings() {
 
 function resolveStoredString(storedValue: unknown, fallback: string) {
   return typeof storedValue === "string" ? storedValue.trim() : fallback;
+}
+
+function resolveRequiredString(storedValue: unknown, fallback: string) {
+  const resolved = resolveStoredString(storedValue, fallback);
+  return resolved || fallback;
 }
 
 function decodeStoredSecret(storedValue: string | undefined) {
@@ -111,6 +126,8 @@ function toRuntimeSettings(stored: StoredStudioSettings): StudioRuntimeSettings 
     publicSiteUrl: resolveStoredString(stored.publicSiteUrl, defaults.publicSiteUrl),
     opencodeCommand: resolveStoredString(stored.opencodeCommand, defaults.opencodeCommand),
     opencodeBaseUrl: resolveStoredString(stored.opencodeBaseUrl, defaults.opencodeBaseUrl),
+    opencodeProviderId: resolveRequiredString(stored.opencodeProviderId, defaults.opencodeProviderId),
+    opencodeModelId: resolveRequiredString(stored.opencodeModelId, defaults.opencodeModelId),
     deployKey: decodeStoredDeployKey(stored, defaults.deployKey)
   };
 }
@@ -120,7 +137,9 @@ function toPublicSettings(settings: StudioRuntimeSettings): StudioSettings {
     convexUrl: settings.convexUrl,
     publicSiteUrl: settings.publicSiteUrl,
     opencodeCommand: settings.opencodeCommand,
-    opencodeBaseUrl: settings.opencodeBaseUrl
+    opencodeBaseUrl: settings.opencodeBaseUrl,
+    opencodeProviderId: settings.opencodeProviderId,
+    opencodeModelId: settings.opencodeModelId
   };
 }
 
@@ -170,6 +189,8 @@ export async function saveStudioSettings(payload: SaveStudioSettingsPayload) {
     publicSiteUrl: typeof input.publicSiteUrl === "string" ? input.publicSiteUrl.trim() : current.publicSiteUrl,
     opencodeCommand: typeof input.opencodeCommand === "string" ? input.opencodeCommand.trim() : current.opencodeCommand,
     opencodeBaseUrl: typeof input.opencodeBaseUrl === "string" ? input.opencodeBaseUrl.trim() : current.opencodeBaseUrl,
+    opencodeProviderId: typeof input.opencodeProviderId === "string" ? input.opencodeProviderId.trim() : current.opencodeProviderId,
+    opencodeModelId: typeof input.opencodeModelId === "string" ? input.opencodeModelId.trim() : current.opencodeModelId,
     ...encodedDeployKey
   };
 
@@ -181,6 +202,8 @@ export async function saveStudioSettings(payload: SaveStudioSettingsPayload) {
     publicSiteUrl: nextStored.publicSiteUrl || "",
     opencodeCommand: nextStored.opencodeCommand || "",
     opencodeBaseUrl: nextStored.opencodeBaseUrl || DEFAULT_OPENCODE_BASE_URL,
+    opencodeProviderId: nextStored.opencodeProviderId || DEFAULT_OPENCODE_PROVIDER_ID,
+    opencodeModelId: nextStored.opencodeModelId || DEFAULT_OPENCODE_MODEL_ID,
     deployKey: nextDeployKey
   });
 }

@@ -1,9 +1,16 @@
+import { existsSync } from "node:fs";
 import path from "node:path";
+import { fileURLToPath } from "node:url";
 
 import { app } from "electron";
 
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+
 export const DEFAULT_OPENCODE_COMMAND = "opencode";
 export const DEFAULT_OPENCODE_BASE_URL = "http://127.0.0.1:4096";
+export const DEFAULT_OPENCODE_PROVIDER_ID = "openai";
+export const DEFAULT_OPENCODE_MODEL_ID = "gpt-4";
 
 export function getStudioPaths() {
   const appPath = app.getAppPath();
@@ -21,6 +28,15 @@ export function getStudioPaths() {
     settingsFile: path.join(userDataDir, "settings.json"),
     rendererEntryPath: path.join(appPath, "dist", "studio", "renderer", "index.html")
   };
+}
+
+function looksLikeWorkspace(directory: string) {
+  return (
+    existsSync(path.join(directory, "package.json")) &&
+    existsSync(path.join(directory, "apps", "site")) &&
+    existsSync(path.join(directory, "apps", "studio")) &&
+    existsSync(path.join(directory, "convex"))
+  );
 }
 
 function resolveWorkspaceRoot() {

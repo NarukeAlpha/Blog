@@ -3,6 +3,8 @@ export interface StudioSettings {
   publicSiteUrl: string;
   opencodeCommand: string;
   opencodeBaseUrl: string;
+  opencodeProviderId: string;
+  opencodeModelId: string;
 }
 
 export interface SaveStudioSettingsPayload {
@@ -10,6 +12,8 @@ export interface SaveStudioSettingsPayload {
   publicSiteUrl?: string;
   opencodeCommand?: string;
   opencodeBaseUrl?: string;
+  opencodeProviderId?: string;
+  opencodeModelId?: string;
   deployKey?: string;
   clearDeployKey?: boolean;
 }
@@ -22,11 +26,17 @@ export interface StudioStatus {
   convexConfigured: boolean;
   convexReachable: boolean;
   deployKeyConfigured: boolean;
+  opencodeConfigured: boolean;
   opencodeReady: boolean;
-  postCount: number;
-  bookmarkCount: number;
+  postCount: number | null;
+  bookmarkCount: number | null;
   overview: SiteOverview | null;
   overviewError: string | null;
+}
+
+export interface StudioBootstrap {
+  settings: StudioSettings;
+  status: StudioStatus;
 }
 
 export interface PostRecord {
@@ -59,9 +69,12 @@ export interface BookmarkRecord extends PublicBookmarkRecord {
   note: string;
 }
 
-export interface SiteOverview {
+export interface SiteCounts {
   postCount: number;
   bookmarkCount: number;
+}
+
+export interface SiteOverview extends SiteCounts {
   latestPosts: PostSummaryRecord[];
   latestBookmarks: PublicBookmarkRecord[];
 }

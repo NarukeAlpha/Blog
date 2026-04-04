@@ -85,7 +85,9 @@ async function getOpencodeConfig() {
 
   return {
     baseUrl: settings.opencodeBaseUrl || DEFAULT_OPENCODE_BASE_URL,
-    command: settings.opencodeCommand.trim()
+    command: settings.opencodeCommand.trim(),
+    providerID: settings.opencodeProviderId.trim(),
+    modelID: settings.opencodeModelId.trim()
   };
 }
 
@@ -476,6 +478,7 @@ async function resolveBookmarkMetadata(sessionID: string, baseUrl: string) {
 
 export async function researchBookmark(url: string, note = ""): Promise<BookmarkResearchResult> {
   const server = await ensureOpencodeServer();
+  const { providerID, modelID } = await getOpencodeConfig();
   const client = getOpencodeClient(server.endpoint);
   const createdSession = unwrap<SessionInfoResponse>(
     await client.session.create({ title: `Bookmark research: ${url}` }) as PromptEnvelope<SessionInfoResponse>
@@ -488,6 +491,10 @@ export async function researchBookmark(url: string, note = ""): Promise<Bookmark
   await client.session.promptAsync({
     sessionID: createdSession.id,
     agent: "build",
+    model: {
+      providerID,
+      modelID
+    },
     parts: [{ type: "text", text: buildBookmarkPrompt(url, note) }],
     format: {
       type: "json_schema",

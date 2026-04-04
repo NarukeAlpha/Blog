@@ -11,3 +11,4 @@ apps/studio/cache/**
 !apps/studio/cache/thumbnails/
 !apps/studio/cache/thumbnails/bookmarks/
 !apps/studio/cache/thumbnails/bookmarks/.gitkeep
+/cloudflare-site-plan.md

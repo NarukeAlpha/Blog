@@ -1,16 +1,35 @@
-import { ConvexHttpClient, type HttpMutationOptions } from "convex/browser";
-import type { ArgsAndOptions, FunctionReference, FunctionReturnType, OptionalRestArgs } from "convex/server";
+import { ConvexHttpClient } from "convex/browser";
 
-import { api, internal } from "../../../convex/_generated/api";
+import { api } from "../../../convex/_generated/api";
+import type { BookmarkRecord, PostRecord, SiteCounts, SiteOverview } from "../../../packages/shared/src/types";
+import { getStudioRuntimeSettings } from "./settings";
 
 let client: ConvexHttpClient | null = null;
 let clientUrl = "";
-let privilegedClient: ConvexHttpClient | null = null;
-let privilegedClientUrl = "";
-let privilegedClientDeployKey = "";
 
 async function getConfiguredConvexUrl() {
   return (await getStudioRuntimeSettings()).convexUrl;
+}
+
+function deriveConvexSiteUrl(convexUrl: string) {
+  const configuredSiteUrl = String(process.env.CONVEX_SITE_URL || process.env.VITE_CONVEX_SITE_URL || "").trim();
+
+  if (configuredSiteUrl) {
+    return configuredSiteUrl;
+  }
+
+  try {
+    const parsed = new URL(convexUrl);
+
+    if (parsed.hostname.endsWith(".convex.cloud")) {
+      parsed.hostname = `${parsed.hostname.slice(0, -".convex.cloud".length)}.convex.site`;
+      return parsed.toString().replace(/\/$/, "");
+    }
+  } catch {
+    // Let the caller throw a clearer configuration error.
+  }
+
+  return "";
 }
 
 async function requireConvexUrl() {
@@ -23,24 +42,29 @@ async function requireConvexUrl() {
   return convexUrl;
 }
 
+async function requireConvexSiteUrl() {
+  const convexSiteUrl = deriveConvexSiteUrl(await requireConvexUrl());
+
+  if (!convexSiteUrl) {
+    throw new Error("Save a hosted Convex URL in Settings or set CONVEX_SITE_URL so the studio can reach the protected HTTP endpoints.");
+  }
+
+  return convexSiteUrl;
+}
+
 export async function isConvexConfigured() {
   return Boolean(await getConfiguredConvexUrl());
 }
 
-export function hasDeployKey() {
-  return Boolean(process.env.CONVEX_DEPLOY_KEY);
+export async function hasDeployKey() {
+  return Boolean((await getStudioRuntimeSettings()).deployKey);
 }
 
-function setConvexAdminAuth(client: ConvexHttpClient, token: string) {
-  // Convex exposes this at runtime, but keeps it off the public type surface.
-  (client as ConvexHttpClient & { setAdminAuth: (value: string) => void }).setAdminAuth(token);
-}
-
-export function getDeployKey() {
-  const deployKey = process.env.CONVEX_DEPLOY_KEY || "";
+export async function getDeployKey() {
+  const deployKey = (await getStudioRuntimeSettings()).deployKey;
 
   if (!deployKey) {
-    throw new Error("Set CONVEX_DEPLOY_KEY in Electron before loading studio-only Convex functions.");
+    throw new Error("Save the studio write key in Settings before publishing.");
   }
 
   return deployKey;
@@ -61,63 +85,61 @@ export async function getConvexClient() {
   return client;
 }
 
-export function getPrivilegedConvexClient() {
-  const convexUrl = requireConvexUrl();
-  const deployKey = getDeployKey();
+async function callStudioEndpoint<T>(path: string, body: Record<string, unknown>) {
+  const response = await fetch(`${await requireConvexSiteUrl()}${path}`, {
+    method: "POST",
+    headers: {
+      "content-type": "application/json",
+      "x-studio-write-key": await getDeployKey()
+    },
+    body: JSON.stringify(body)
+  });
 
-  if (!privilegedClient || privilegedClientUrl !== convexUrl || privilegedClientDeployKey !== deployKey) {
-    privilegedClient = new ConvexHttpClient(convexUrl);
-    privilegedClientUrl = convexUrl;
-    privilegedClientDeployKey = deployKey;
+  const payload = await response.json().catch(() => null);
+
+  if (!response.ok) {
+    const message = payload && typeof payload === "object" && "error" in payload && typeof payload.error === "string"
+      ? payload.error
+      : `Studio request failed with status ${response.status}.`;
+    throw new Error(message);
   }
 
-  setConvexAdminAuth(privilegedClient, deployKey);
-  return privilegedClient;
-}
-
-// Convex's public client types only accept public refs, even though admin auth
-// can execute internal functions. Keep that escape hatch isolated here.
-export function runPrivilegedQuery<Query extends FunctionReference<"query", "internal">>(
-  query: Query,
-  ...args: OptionalRestArgs<Query>
-) {
-  const client = getPrivilegedConvexClient();
-
-  return (client.query as unknown as (
-    query: Query,
-    ...args: OptionalRestArgs<Query>
-  ) => Promise<FunctionReturnType<Query>>)(query, ...args);
-}
-
-export function runPrivilegedMutation<Mutation extends FunctionReference<"mutation", "internal">>(
-  mutation: Mutation,
-  ...args: ArgsAndOptions<Mutation, HttpMutationOptions>
-) {
-  const client = getPrivilegedConvexClient();
-
-  return (client.mutation as unknown as (
-    mutation: Mutation,
-    ...args: ArgsAndOptions<Mutation, HttpMutationOptions>
-  ) => Promise<FunctionReturnType<Mutation>>)(mutation, ...args);
-}
-
-export function runPrivilegedAction<Action extends FunctionReference<"action", "internal">>(
-  action: Action,
-  ...args: OptionalRestArgs<Action>
-) {
-  const client = getPrivilegedConvexClient();
-
-  return (client.action as unknown as (
-    action: Action,
-    ...args: OptionalRestArgs<Action>
-  ) => Promise<FunctionReturnType<Action>>)(action, ...args);
+  return payload as T;
 }
 
 export async function isConvexReachable() {
-  await getConvexClient().query(api.public.health, {});
+  await (await getConvexClient()).query(api.public.health, {});
   return true;
 }
 
+export async function getPublicSiteCounts(): Promise<SiteCounts> {
+  const client = await getConvexClient();
+  const [posts, bookmarks] = await Promise.all([
+    client.query(api.public.listPosts, {}),
+    client.query(api.public.listBookmarks, {})
+  ]);
+
+  return {
+    postCount: posts.length,
+    bookmarkCount: bookmarks.length
+  };
+}
+
 export async function getSiteOverview() {
-  return runPrivilegedQuery(internal.site.overview, {});
+  return callStudioEndpoint<SiteOverview>("/studio/overview", {});
+}
+
+export async function publishStudioPost(args: { title: string; body: string }) {
+  return callStudioEndpoint<PostRecord>("/studio/posts", args);
+}
+
+export async function publishStudioBookmark(args: {
+  url: string;
+  note: string;
+  title: string;
+  description: string;
+  source: string;
+  thumbnailSourceUrl?: string;
+}) {
+  return callStudioEndpoint<BookmarkRecord>("/studio/bookmarks", args);
 }

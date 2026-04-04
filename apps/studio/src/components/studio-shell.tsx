@@ -1,5 +1,21 @@
 import { FormEvent, useCallback, useEffect, useMemo, useState } from "react";
-import { ArrowUpRight, BookmarkPlus, BookOpenText, Database, FolderOpenDot, Globe2, HardDriveDownload, NotebookPen, Radio, RefreshCw, Sparkles, Wifi, WifiOff } from "lucide-react";
+import {
+  ArrowUpRight,
+  BookmarkPlus,
+  BookOpenText,
+  Database,
+  FolderOpenDot,
+  Globe2,
+  HardDriveDownload,
+  KeyRound,
+  NotebookPen,
+  Radio,
+  RefreshCw,
+  Settings2,
+  Sparkles,
+  Wifi,
+  WifiOff
+} from "lucide-react";
 
 import { Badge } from "@studio/components/ui/badge";
 import { Button } from "@studio/components/ui/button";
@@ -8,9 +24,17 @@ import { Input } from "@studio/components/ui/input";
 import { Textarea } from "@studio/components/ui/textarea";
 import { cn } from "@studio/lib/utils";
 import { formatDate } from "@shared/text";
-import type { BookmarkPublishResult, PostPublishResult, StudioBridge, StudioStatus } from "@shared/types";
+import type {
+  BookmarkPublishResult,
+  PostPublishResult,
+  SaveStudioSettingsPayload,
+  StudioBootstrap,
+  StudioBridge,
+  StudioSettings,
+  StudioStatus
+} from "@shared/types";
 
-type ViewKey = "dashboard" | "post" | "bookmarks";
+type ViewKey = "dashboard" | "post" | "bookmarks" | "settings";
 type NoticeTone = "neutral" | "success" | "warning" | "error";
 
 interface NoticeState {
@@ -24,6 +48,8 @@ interface SettingsDraft {
   publicSiteUrl: string;
   opencodeCommand: string;
   opencodeBaseUrl: string;
+  opencodeProviderId: string;
+  opencodeModelId: string;
   deployKey: string;
 }
 
@@ -57,7 +83,19 @@ function shortenPath(filePath: string) {
   return parts.slice(-3).join("/");
 }
 
-export function StudioShell({ studio }: { studio: StudioBridge }) {
+function createSettingsDraft(settings: StudioSettings): SettingsDraft {
+  return {
+    convexUrl: settings.convexUrl,
+    publicSiteUrl: settings.publicSiteUrl,
+    opencodeCommand: settings.opencodeCommand,
+    opencodeBaseUrl: settings.opencodeBaseUrl,
+    opencodeProviderId: settings.opencodeProviderId,
+    opencodeModelId: settings.opencodeModelId,
+    deployKey: ""
+  };
+}
+
+export function StudioShell({ studio, settings, initialStatus, onBootstrapChange }: StudioShellProps) {
   const [view, setView] = useState<ViewKey>("dashboard");
   const [status, setStatus] = useState<StudioStatus>(initialStatus);
   const [loadingStatus, setLoadingStatus] = useState(false);
@@ -65,18 +103,30 @@ export function StudioShell({ studio }: { studio: StudioBridge }) {
   const [notice, setNotice] = useState<NoticeState | null>(null);
   const [postDraft, setPostDraft] = useState({ title: "", body: "" });
   const [bookmarkDraft, setBookmarkDraft] = useState({ url: "", note: "" });
-  const overview = status?.overview;
+  const [settingsDraft, setSettingsDraft] = useState<SettingsDraft>(() => createSettingsDraft(settings));
+  const [clearDeployKey, setClearDeployKey] = useState(false);
+
+  useEffect(() => {
+    setStatus(initialStatus);
+  }, [initialStatus]);
+
+  useEffect(() => {
+    setSettingsDraft(createSettingsDraft(settings));
+    setClearDeployKey(false);
+  }, [settings]);
+
+  const overview = status.overview;
   const overviewUnavailableMessage = useMemo(() => {
     if (loadingStatus) {
       return "Loading the live overview...";
     }
 
-    if (status?.overviewError) {
+    if (status.overviewError) {
       return `Overview unavailable: ${status.overviewError}`;
     }
 
-    if (!status?.convexConfigured) {
-      return "Add the Convex URL to load the live overview.";
+    if (!status.convexConfigured) {
+      return "Save the Convex URL in Settings to load the live overview.";
     }
 
     if (!status.convexReachable) {
@@ -84,7 +134,7 @@ export function StudioShell({ studio }: { studio: StudioBridge }) {
     }
 
     if (!status.deployKeyConfigured) {
-      return "Add CONVEX_DEPLOY_KEY locally to load the live overview.";
+      return "Save the studio write key in Settings to load the live overview.";
     }
 
     return null;
@@ -126,17 +176,17 @@ export function StudioShell({ studio }: { studio: StudioBridge }) {
     () => [
       {
         label: "Posts",
-        value: loadingStatus ? "..." : overviewUnavailableMessage ? "Unavailable" : String(overview?.postCount ?? status?.postCount ?? 0),
+        value: loadingStatus ? "..." : status.postCount === null ? "Unavailable" : String(status.postCount),
         icon: BookOpenText
       },
       {
         label: "Bookmarks",
-        value: loadingStatus ? "..." : overviewUnavailableMessage ? "Unavailable" : String(overview?.bookmarkCount ?? status?.bookmarkCount ?? 0),
+        value: loadingStatus ? "..." : status.bookmarkCount === null ? "Unavailable" : String(status.bookmarkCount),
         icon: BookmarkPlus
       },
-      { label: "Convex", value: status?.convexReachable ? "Live" : status?.convexConfigured ? "Check link" : "Missing", icon: Database }
+      { label: "Convex", value: status.convexReachable ? "Live" : status.convexConfigured ? "Check link" : "Missing", icon: Database }
     ],
-    [loadingStatus, overview, overviewUnavailableMessage, status]
+    [loadingStatus, status]
   );
 
   const canPublishPosts = status.convexConfigured && status.deployKeyConfigured;
@@ -192,6 +242,8 @@ export function StudioShell({ studio }: { studio: StudioBridge }) {
       publicSiteUrl: settingsDraft.publicSiteUrl,
       opencodeCommand: settingsDraft.opencodeCommand,
       opencodeBaseUrl: settingsDraft.opencodeBaseUrl,
+      opencodeProviderId: settingsDraft.opencodeProviderId,
+      opencodeModelId: settingsDraft.opencodeModelId,
       clearDeployKey
     };
 
@@ -331,31 +383,35 @@ export function StudioShell({ studio }: { studio: StudioBridge }) {
                 </CardHeader>
                 <CardContent className="grid gap-5 p-6">
                   <div className="glass-subtle rounded-[1.8rem] p-5">
-                      <p className="text-sm leading-7 text-muted-foreground">Write locally, hit publish, and Convex becomes the source of truth. The public site reads the same hosted deployment live from Cloudflare.</p>
-                    </div>
+                    <p className="text-sm leading-7 text-muted-foreground">
+                      This desktop app keeps its own settings, studio write key, and cache under your local app data folder. Convex stays the shared source of truth, so you can move between machines without syncing the repo.
+                    </p>
+                  </div>
 
                   <div className="grid gap-4 md:grid-cols-3">
                     {[
                       {
                         label: "Hosted backend",
-                        detail: status?.convexReachable
-                          ? "The studio can reach the same hosted Convex deployment the site uses."
-                          : status?.convexConfigured
-                            ? "Convex URL is set, but the deployment is not responding right now."
-                            : "Add the Convex URL to .env.local before publishing.",
-                        tone: status?.convexReachable ? "success" : status?.convexConfigured ? "warning" : "warning"
+                        detail: status.convexReachable
+                          ? "The desktop app is talking to the saved Convex deployment."
+                          : status.convexConfigured
+                            ? "A Convex URL is saved, but the deployment is not responding right now."
+                            : "Save the Convex deployment URL in Settings before publishing.",
+                        tone: status.convexReachable ? "success" : "warning"
                       },
                       {
                         label: "Studio auth",
-                        detail: status?.deployKeyConfigured
-                          ? "Electron has deploy-key auth and can call the internal Convex functions used by the studio."
-                          : "Set CONVEX_DEPLOY_KEY locally before loading overview data or publishing content.",
-                        tone: status?.deployKeyConfigured ? "success" : "warning"
+                        detail: status.deployKeyConfigured
+                          ? "Electron has the shared studio write key and can call the protected Convex functions used by the studio."
+                          : "Save the studio write key locally before loading overview data or publishing content.",
+                        tone: status.deployKeyConfigured ? "success" : "warning"
                       },
                       {
-                        label: "Serving plan",
-                        detail: "Cloudflare deployment notes live in docs/deploy-site-on-cloudflare.md.",
-                        tone: "neutral"
+                        label: "Bookmark research",
+                        detail: status.opencodeConfigured
+                          ? "Bookmarks can start OpenCode from the saved command when needed."
+                          : "Bookmarks are optional. Save an OpenCode command in Settings to enable enrichment.",
+                        tone: status.opencodeConfigured ? "neutral" : "warning"
                       }
                     ].map((item) => (
                       <div key={item.label} className="glass-subtle rounded-[1.6rem] p-4 transition-all duration-200 hover:border-[rgba(120,80,255,0.3)] hover:bg-[rgba(120,80,255,0.08)]">
@@ -369,7 +425,7 @@ export function StudioShell({ studio }: { studio: StudioBridge }) {
 
                   {!status.convexConfigured || !status.deployKeyConfigured ? (
                     <div className="flex flex-wrap items-center justify-between gap-3 rounded-[1.6rem] border border-amber-400/20 bg-amber-400/10 p-4 text-sm text-amber-100">
-                      <p>Publishing is blocked until the desktop app has a Convex URL and deploy key.</p>
+                      <p>Publishing is blocked until the desktop app has a Convex URL and studio write key.</p>
                       <Button variant="outline" onClick={() => setView("settings")}>Open settings</Button>
                     </div>
                   ) : null}
@@ -448,7 +504,7 @@ export function StudioShell({ studio }: { studio: StudioBridge }) {
                 <form className="grid gap-4" onSubmit={handlePostSubmit}>
                   {!canPublishPosts ? (
                     <div className="rounded-[1.6rem] border border-amber-400/20 bg-amber-400/10 p-4 text-sm text-amber-100">
-                      Save a Convex URL and deploy key in Settings before publishing posts.
+                      Save a Convex URL and studio write key in Settings before publishing posts.
                     </div>
                   ) : null}
 
@@ -496,7 +552,7 @@ export function StudioShell({ studio }: { studio: StudioBridge }) {
                     </div>
                   ) : !canPublishPosts ? (
                     <div className="rounded-[1.6rem] border border-amber-400/20 bg-amber-400/10 p-4 text-sm text-amber-100">
-                      Save a Convex URL and deploy key in Settings before publishing bookmarks.
+                      Save a Convex URL and studio write key in Settings before publishing bookmarks.
                     </div>
                   ) : null}
 
@@ -566,11 +622,11 @@ export function StudioShell({ studio }: { studio: StudioBridge }) {
                     <div className="grid gap-2">
                       <label className="flex items-center gap-2 text-sm font-medium text-foreground">
                         <KeyRound className="h-4 w-4" />
-                        Convex deploy key
+                        Studio write key
                       </label>
                       <Input
                         type="password"
-                        placeholder={status.deployKeyConfigured && !clearDeployKey ? "Saved locally. Enter a new key to replace it." : "Paste the deploy key"}
+                        placeholder={status.deployKeyConfigured && !clearDeployKey ? "Saved locally. Enter a new key to replace it." : "Paste the studio write key"}
                         value={settingsDraft.deployKey}
                         onChange={(event) => setSettingsDraft((current) => ({ ...current, deployKey: event.target.value }))}
                       />
@@ -604,9 +660,30 @@ export function StudioShell({ studio }: { studio: StudioBridge }) {
                     </div>
                   </div>
 
+                  <div className="grid gap-4 lg:grid-cols-2">
+                    <div className="grid gap-2">
+                      <label className="text-sm font-medium text-foreground">OpenCode provider ID</label>
+                      <Input
+                        placeholder="openai"
+                        value={settingsDraft.opencodeProviderId}
+                        onChange={(event) => setSettingsDraft((current) => ({ ...current, opencodeProviderId: event.target.value }))}
+                      />
+                    </div>
+
+                    <div className="grid gap-2">
+                      <label className="text-sm font-medium text-foreground">OpenCode model ID</label>
+                      <Input
+                        placeholder="gpt-4"
+                        value={settingsDraft.opencodeModelId}
+                        onChange={(event) => setSettingsDraft((current) => ({ ...current, opencodeModelId: event.target.value }))}
+                      />
+                      <p className="text-xs text-muted-foreground">Bookmark research always sends this provider/model pair explicitly, even if another OpenCode session picked a different default.</p>
+                    </div>
+                  </div>
+
                   <div className="grid gap-3 rounded-[1.8rem] p-5 glass-subtle">
                     <p className="text-sm leading-7 text-muted-foreground">
-                      Desktop settings are stored under <code>{status.userDataDir}</code>. The deploy key stays local to this installation, while Convex remains the shared content source across machines.
+                      Desktop settings are stored under <code>{status.userDataDir}</code>. The studio write key stays local to this installation, while Convex remains the shared content source across machines.
                     </p>
                     <p className="text-sm leading-7 text-muted-foreground">
                       Cached bookmark thumbnails are mirrored into <code>{status.thumbnailsDir}</code> so the app never needs a writable copy of the repo.

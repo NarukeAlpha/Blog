@@ -3,7 +3,7 @@ import { fileURLToPath } from "node:url";
 
 import { app, BrowserWindow, ipcMain, shell } from "electron";
 
-import { getPublicSiteUrl, getSiteOverview, hasDeployKey, isConvexConfigured, isConvexReachable } from "../lib/convex";
+import { getPublicSiteCounts, getPublicSiteUrl, getSiteOverview, hasDeployKey, isConvexConfigured, isConvexReachable } from "../lib/convex";
 import { loadWorkspaceEnv } from "../lib/env";
 import { isOpencodeConfigured, isOpencodeHealthy, shutdownOpencodeServer } from "../lib/opencode";
 import { getStudioPaths } from "../lib/paths";
@@ -26,8 +26,8 @@ async function getStatusPayload() {
   const deployKeyConfigured = await hasDeployKey();
 
   let convexReachable = false;
-  let postCount = 0;
-  let bookmarkCount = 0;
+  let postCount: number | null = null;
+  let bookmarkCount: number | null = null;
   let overview = null;
   let overviewError = null;
 
@@ -40,7 +40,18 @@ async function getStatusPayload() {
     }
   }
 
-  if (convexReachable && hasDeployKey()) {
+  if (convexReachable) {
+    try {
+      const counts = await getPublicSiteCounts();
+      postCount = counts.postCount;
+      bookmarkCount = counts.bookmarkCount;
+    } catch {
+      postCount = null;
+      bookmarkCount = null;
+    }
+  }
+
+  if (convexReachable && deployKeyConfigured) {
     try {
       overview = await getSiteOverview();
       postCount = overview.postCount;
@@ -58,12 +69,20 @@ async function getStatusPayload() {
     publicSiteUrl: (await getPublicSiteUrl()) || null,
     convexConfigured,
     convexReachable,
-    deployKeyConfigured: hasDeployKey(),
+    deployKeyConfigured,
+    opencodeConfigured,
     opencodeReady,
     postCount,
     bookmarkCount,
     overview,
     overviewError
+  };
+}
+
+async function getBootstrapPayload() {
+  return {
+    settings: await getStudioSettings(),
+    status: await getStatusPayload()
   };
 }
 
