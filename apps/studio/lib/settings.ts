@@ -1,8 +1,7 @@
+import { createRequire } from "node:module";
 import { readFile, writeFile } from "node:fs/promises";
 
-import { safeStorage } from "electron";
-
-import type { SaveStudioSettingsPayload, StudioSettings } from "../../../packages/shared/src/types";
+import type { SaveStudioSettingsPayload, StudioSettings } from "@shared/types";
 import {
   DEFAULT_OPENCODE_BASE_URL,
   DEFAULT_OPENCODE_COMMAND,
@@ -11,6 +10,8 @@ import {
   getStudioPaths
 } from "./paths";
 import { ensureStudioDirectories } from "./workspace";
+
+const require = createRequire(import.meta.url);
 
 interface StoredStudioSettings {
   version: number;
@@ -34,6 +35,20 @@ const SETTINGS_VERSION = 1;
 
 function normalizeString(value: unknown) {
   return typeof value === "string" ? value.trim() : "";
+}
+
+function getSafeStorage() {
+  try {
+    const electron = require("electron") as typeof import("electron") | string;
+
+    if (electron && typeof electron === "object" && "safeStorage" in electron) {
+      return electron.safeStorage;
+    }
+  } catch {
+    // noop
+  }
+
+  return null;
 }
 
 function getEnvironmentDefaults() {
@@ -84,7 +99,9 @@ function decodeStoredSecret(storedValue: string | undefined) {
   }
 
   try {
-    if (safeStorage.isEncryptionAvailable()) {
+    const safeStorage = getSafeStorage();
+
+    if (safeStorage?.isEncryptionAvailable()) {
       return safeStorage.decryptString(Buffer.from(storedValue, "base64")).trim();
     }
   } catch {
@@ -155,7 +172,9 @@ function encodeDeployKey(deployKey: string) {
     };
   }
 
-  if (safeStorage.isEncryptionAvailable()) {
+  const safeStorage = getSafeStorage();
+
+  if (safeStorage?.isEncryptionAvailable()) {
     return {
       encryptedDeployKey: safeStorage.encryptString(deployKey).toString("base64"),
       plaintextDeployKey: undefined
