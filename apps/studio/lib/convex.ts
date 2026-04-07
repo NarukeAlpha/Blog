@@ -1,19 +1,17 @@
 import { ConvexHttpClient } from "convex/browser";
 
-import { api } from "../../../convex/_generated/api";
-import type { BookmarkRecord, PostRecord, SiteCounts, SiteOverview } from "../../../packages/shared/src/types";
-import { getStudioRuntimeSettings } from "./settings";
+import { api } from "@convex/_generated/api";
+import type { BookmarkRecord, PostRecord, SiteCounts, SiteOverview } from "@shared/types";
+import { getActiveStudioRuntimeSettings } from "./settings";
 
 let client: ConvexHttpClient | null = null;
 let clientUrl = "";
 
 async function getConfiguredConvexUrl() {
-  return (await getStudioRuntimeSettings()).convexUrl;
+  return (await getActiveStudioRuntimeSettings()).convexUrl;
 }
 
-function deriveConvexSiteUrl(convexUrl: string) {
-  const configuredSiteUrl = String(process.env.CONVEX_SITE_URL || process.env.VITE_CONVEX_SITE_URL || "").trim();
-
+function deriveConvexSiteUrl(configuredSiteUrl: string, convexUrl: string) {
   if (configuredSiteUrl) {
     return configuredSiteUrl;
   }
@@ -43,10 +41,11 @@ async function requireConvexUrl() {
 }
 
 async function requireConvexSiteUrl() {
-  const convexSiteUrl = deriveConvexSiteUrl(await requireConvexUrl());
+  const activeSettings = await getActiveStudioRuntimeSettings();
+  const convexSiteUrl = deriveConvexSiteUrl(activeSettings.convexSiteUrl, activeSettings.convexUrl || (await requireConvexUrl()));
 
   if (!convexSiteUrl) {
-    throw new Error("Save a hosted Convex URL in Settings or set CONVEX_SITE_URL so the studio can reach the protected HTTP endpoints.");
+    throw new Error("Save the Convex action URL in Settings so the studio can reach the protected HTTP endpoints for the selected environment.");
   }
 
   return convexSiteUrl;
@@ -57,11 +56,11 @@ export async function isConvexConfigured() {
 }
 
 export async function hasDeployKey() {
-  return Boolean((await getStudioRuntimeSettings()).deployKey);
+  return Boolean((await getActiveStudioRuntimeSettings()).deployKey);
 }
 
 export async function getDeployKey() {
-  const deployKey = (await getStudioRuntimeSettings()).deployKey;
+  const deployKey = (await getActiveStudioRuntimeSettings()).deployKey;
 
   if (!deployKey) {
     throw new Error("Save the studio write key in Settings before publishing.");
@@ -71,7 +70,19 @@ export async function getDeployKey() {
 }
 
 export async function getPublicSiteUrl() {
-  return (await getStudioRuntimeSettings()).publicSiteUrl;
+  return (await getActiveStudioRuntimeSettings()).publicSiteUrl;
+}
+
+export async function getActiveStudioConnection() {
+  const activeSettings = await getActiveStudioRuntimeSettings();
+
+  return {
+    environment: activeSettings.environment,
+    convexUrl: activeSettings.convexUrl,
+    convexSiteUrl: deriveConvexSiteUrl(activeSettings.convexSiteUrl, activeSettings.convexUrl),
+    publicSiteUrl: activeSettings.publicSiteUrl,
+    deployKey: activeSettings.deployKey
+  };
 }
 
 export async function getConvexClient() {

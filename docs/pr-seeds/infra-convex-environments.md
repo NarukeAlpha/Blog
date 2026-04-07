@@ -1,8 +1,12 @@
 # Convex Environment Separation
 
-This placeholder branch exists to open the PR and reserve the environment split workstream.
+This branch now implements the environment split workstream.
 
-Planned focus:
-- separate development and production Convex usage clearly
-- clean up the runtime environment contract and documentation
-- reduce the chance of local work pointing at the wrong deployment or secret
+Delivered focus:
+- local site and studio runs default to the hosted `dev` Convex deployment
+- the Electron studio now stores separate hosted `dev` and `prod` targets
+- the studio settings screen includes a dropdown that switches the active environment
+- production Cloudflare deploys point at `https://ardent-firefly-400.convex.cloud`
+- production studio HTTP actions point at `https://ardent-firefly-400.convex.site`
+- local Convex remains available as an explicit opt-in workflow for isolated backend testing
+- docs now include a dev-to-prod migration sequence that preserves the old prod state as a rollback backup
