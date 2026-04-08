@@ -89,6 +89,83 @@ function normalizeEnvironment(value: unknown): StudioEnvironment | null {
   return value === "dev" || value === "prod" ? value : null;
 }
 
+function getOptionalString(value: unknown) {
+  return typeof value === "string" ? value : undefined;
+}
+
+function parseStoredEnvironmentSettings(value: unknown): StoredStudioEnvironmentSettings | null {
+  if (!isRecord(value)) {
+    return null;
+  }
+
+  const convexUrl = getOptionalString(value.convexUrl);
+  const convexSiteUrl = getOptionalString(value.convexSiteUrl);
+  const publicSiteUrl = getOptionalString(value.publicSiteUrl);
+  const encryptedDeployKey = getOptionalString(value.encryptedDeployKey);
+  const plaintextDeployKey = getOptionalString(value.plaintextDeployKey);
+
+  return {
+    ...(typeof convexUrl === "string" ? { convexUrl } : {}),
+    ...(typeof convexSiteUrl === "string" ? { convexSiteUrl } : {}),
+    ...(typeof publicSiteUrl === "string" ? { publicSiteUrl } : {}),
+    ...(typeof encryptedDeployKey === "string" ? { encryptedDeployKey } : {}),
+    ...(typeof plaintextDeployKey === "string" ? { plaintextDeployKey } : {})
+  };
+}
+
+function parseStoredEnvironments(value: unknown) {
+  if (!isRecord(value)) {
+    return undefined;
+  }
+
+  const environments: Partial<Record<StudioEnvironment, StoredStudioEnvironmentSettings>> = {};
+
+  for (const environment of STUDIO_ENVIRONMENTS) {
+    const entry = parseStoredEnvironmentSettings(value[environment]);
+
+    if (entry) {
+      environments[environment] = entry;
+    }
+  }
+
+  return Object.keys(environments).length ? environments : undefined;
+}
+
+function parseStoredSettings(value: unknown): StoredStudioSettings | null {
+  if (!isRecord(value)) {
+    return null;
+  }
+
+  const selectedEnvironment = normalizeEnvironment(value.selectedEnvironment) || undefined;
+  const environments = parseStoredEnvironments(value.environments);
+  const opencodeCommand = getOptionalString(value.opencodeCommand);
+  const opencodeBaseUrl = getOptionalString(value.opencodeBaseUrl);
+  const opencodeProviderId = getOptionalString(value.opencodeProviderId);
+  const opencodeModelId = getOptionalString(value.opencodeModelId);
+  const convexUrl = getOptionalString(value.convexUrl);
+  const publicSiteUrl = getOptionalString(value.publicSiteUrl);
+  const encryptedDeployKey = getOptionalString(value.encryptedDeployKey);
+  const plaintextDeployKey = getOptionalString(value.plaintextDeployKey);
+  const encryptedWriteKey = getOptionalString(value.encryptedWriteKey);
+  const plaintextWriteKey = getOptionalString(value.plaintextWriteKey);
+
+  return {
+    version: typeof value.version === "number" ? value.version : SETTINGS_VERSION,
+    ...(selectedEnvironment ? { selectedEnvironment } : {}),
+    ...(environments ? { environments } : {}),
+    ...(typeof opencodeCommand === "string" ? { opencodeCommand } : {}),
+    ...(typeof opencodeBaseUrl === "string" ? { opencodeBaseUrl } : {}),
+    ...(typeof opencodeProviderId === "string" ? { opencodeProviderId } : {}),
+    ...(typeof opencodeModelId === "string" ? { opencodeModelId } : {}),
+    ...(typeof convexUrl === "string" ? { convexUrl } : {}),
+    ...(typeof publicSiteUrl === "string" ? { publicSiteUrl } : {}),
+    ...(typeof encryptedDeployKey === "string" ? { encryptedDeployKey } : {}),
+    ...(typeof plaintextDeployKey === "string" ? { plaintextDeployKey } : {}),
+    ...(typeof encryptedWriteKey === "string" ? { encryptedWriteKey } : {}),
+    ...(typeof plaintextWriteKey === "string" ? { plaintextWriteKey } : {})
+  };
+}
+
 function readEnvironmentVariable(name: string) {
   return normalizeString(process.env[name]);
 }
@@ -154,9 +231,9 @@ async function readStoredSettings() {
 
   try {
     const raw = await readFile(settingsFile, "utf8");
-    const parsed = JSON.parse(raw) as StoredStudioSettings;
+    const parsed = parseStoredSettings(JSON.parse(raw));
 
-    return isRecord(parsed) ? parsed : { version: SETTINGS_VERSION };
+    return parsed || { version: SETTINGS_VERSION };
   } catch (error) {
     if ((error as NodeJS.ErrnoException).code === "ENOENT") {
       return { version: SETTINGS_VERSION };
@@ -198,9 +275,7 @@ function decodeStoredSecret(storedValue: string | undefined) {
 }
 
 function getStoredEnvironmentSettings(stored: StoredStudioSettings, environment: StudioEnvironment) {
-  const environments = isRecord(stored.environments) ? stored.environments : null;
-  const entry = environments?.[environment];
-  return isRecord(entry) ? (entry as StoredStudioEnvironmentSettings) : null;
+  return stored.environments?.[environment] || null;
 }
 
 function decodeLegacyDeployKey(stored: StoredStudioSettings, fallback: string) {
@@ -304,10 +379,6 @@ function toPublicSettings(settings: StudioRuntimeSettings): StudioSettings {
   };
 }
 
-function normalizeSavePayload(payload: SaveStudioSettingsPayload | null | undefined) {
-  return payload && typeof payload === "object" ? payload : {};
-}
-
 function normalizeClearDeployKeys(clearDeployKeys: unknown) {
   if (!Array.isArray(clearDeployKeys)) {
     return new Set<StudioEnvironment>();
@@ -317,12 +388,7 @@ function normalizeClearDeployKeys(clearDeployKeys: unknown) {
 }
 
 function getEnvironmentPayload(payload: SaveStudioSettingsPayload, environment: StudioEnvironment) {
-  if (!isRecord(payload.environments)) {
-    return null;
-  }
-
-  const entry = payload.environments[environment];
-  return isRecord(entry) ? entry : null;
+  return payload.environments?.[environment] || null;
 }
 
 function encodeDeployKey(deployKey: string) {
@@ -365,24 +431,23 @@ export async function getStudioSettings() {
 }
 
 export async function saveStudioSettings(payload: SaveStudioSettingsPayload) {
-  const input = normalizeSavePayload(payload);
   const current = await getStudioRuntimeSettings();
-  const clearDeployKeys = normalizeClearDeployKeys(input.clearDeployKeys);
+  const clearDeployKeys = normalizeClearDeployKeys(payload.clearDeployKeys);
   const nextSettings: StudioRuntimeSettings = {
-    selectedEnvironment: normalizeEnvironment(input.selectedEnvironment) || current.selectedEnvironment,
+    selectedEnvironment: normalizeEnvironment(payload.selectedEnvironment) || current.selectedEnvironment,
     environments: {
       dev: { ...current.environments.dev },
       prod: { ...current.environments.prod }
     },
-    opencodeCommand: typeof input.opencodeCommand === "string" ? input.opencodeCommand.trim() : current.opencodeCommand,
-    opencodeBaseUrl: typeof input.opencodeBaseUrl === "string" ? input.opencodeBaseUrl.trim() : current.opencodeBaseUrl,
-    opencodeProviderId: typeof input.opencodeProviderId === "string" ? input.opencodeProviderId.trim() : current.opencodeProviderId,
-    opencodeModelId: typeof input.opencodeModelId === "string" ? input.opencodeModelId.trim() : current.opencodeModelId
+    opencodeCommand: typeof payload.opencodeCommand === "string" ? payload.opencodeCommand.trim() : current.opencodeCommand,
+    opencodeBaseUrl: typeof payload.opencodeBaseUrl === "string" ? payload.opencodeBaseUrl.trim() : current.opencodeBaseUrl,
+    opencodeProviderId: typeof payload.opencodeProviderId === "string" ? payload.opencodeProviderId.trim() : current.opencodeProviderId,
+    opencodeModelId: typeof payload.opencodeModelId === "string" ? payload.opencodeModelId.trim() : current.opencodeModelId
   };
 
   for (const environment of STUDIO_ENVIRONMENTS) {
     const currentEnvironment = current.environments[environment];
-    const environmentInput = getEnvironmentPayload(input, environment);
+    const environmentInput = getEnvironmentPayload(payload, environment);
     const providedDeployKey = typeof environmentInput?.deployKey === "string" ? environmentInput.deployKey.trim() : "";
 
     nextSettings.environments[environment] = {
