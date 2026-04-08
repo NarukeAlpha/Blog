@@ -121,14 +121,15 @@ function getEnvironmentDefaults() {
     publicSiteUrl: normalizeString(process.env.PUBLIC_SITE_URL || process.env.VITE_PUBLIC_SITE_URL),
     deployKey: normalizeString(process.env.STUDIO_WRITE_KEY || process.env.CONVEX_DEPLOY_KEY)
   };
+  const prodDefaults = readEnvironmentDefaults("prod");
   const defaults = {
     environments: {
       dev: readEnvironmentDefaults("dev"),
       prod: {
-        convexUrl: readEnvironmentDefaults("prod").convexUrl || legacyProdDefaults.convexUrl,
-        convexSiteUrl: readEnvironmentDefaults("prod").convexSiteUrl || legacyProdDefaults.convexSiteUrl,
-        publicSiteUrl: readEnvironmentDefaults("prod").publicSiteUrl || legacyProdDefaults.publicSiteUrl,
-        deployKey: readEnvironmentDefaults("prod").deployKey || legacyProdDefaults.deployKey
+        convexUrl: prodDefaults.convexUrl || legacyProdDefaults.convexUrl,
+        convexSiteUrl: prodDefaults.convexSiteUrl || legacyProdDefaults.convexSiteUrl,
+        publicSiteUrl: prodDefaults.publicSiteUrl || legacyProdDefaults.publicSiteUrl,
+        deployKey: prodDefaults.deployKey || legacyProdDefaults.deployKey
       }
     },
     opencodeCommand: normalizeString(process.env.OPENCODE_COMMAND) || DEFAULT_OPENCODE_COMMAND,

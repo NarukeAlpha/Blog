@@ -69,17 +69,16 @@ export async function getDeployKey() {
   return deployKey;
 }
 
-export async function getPublicSiteUrl() {
-  return (await getActiveStudioRuntimeSettings()).publicSiteUrl;
-}
-
 export async function getActiveStudioConnection() {
   const activeSettings = await getActiveStudioRuntimeSettings();
+  const convexUrl = activeSettings.convexUrl || "";
 
+  // Status/bootstrap reads should stay non-throwing so the settings screen can
+  // render incomplete environment targets and tell the user what is missing.
   return {
     environment: activeSettings.environment,
-    convexUrl: activeSettings.convexUrl,
-    convexSiteUrl: deriveConvexSiteUrl(activeSettings.convexSiteUrl, activeSettings.convexUrl),
+    convexUrl,
+    convexSiteUrl: deriveConvexSiteUrl(activeSettings.convexSiteUrl, convexUrl),
     publicSiteUrl: activeSettings.publicSiteUrl,
     deployKey: activeSettings.deployKey
   };

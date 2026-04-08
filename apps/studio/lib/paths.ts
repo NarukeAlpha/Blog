@@ -1,5 +1,6 @@
 import { existsSync } from "node:fs";
 import { createRequire } from "node:module";
+import os from "node:os";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 
@@ -11,6 +12,9 @@ export const DEFAULT_OPENCODE_COMMAND = "opencode";
 export const DEFAULT_OPENCODE_BASE_URL = "http://127.0.0.1:4096";
 export const DEFAULT_OPENCODE_PROVIDER_ID = "openai";
 export const DEFAULT_OPENCODE_MODEL_ID = "gpt-4";
+// Tests and non-Electron utility imports still need writable paths, but they
+// should not create cache/settings directories inside the repository root.
+const NON_ELECTRON_USER_DATA_DIR = path.join(os.tmpdir(), "narukealpha-post-studio");
 
 function getElectronApp() {
   try {
@@ -30,7 +34,7 @@ function getElectronApp() {
 export function getStudioPaths() {
   const electronApp = getElectronApp();
   const appPath = electronApp?.getAppPath() || ROOT_DIR;
-  const userDataDir = electronApp?.getPath("userData") || path.join(ROOT_DIR, ".studio");
+  const userDataDir = electronApp?.getPath("userData") || NON_ELECTRON_USER_DATA_DIR;
   const cacheDir = path.join(userDataDir, "cache");
   const thumbnailsDir = path.join(cacheDir, "thumbnails");
   const bookmarkThumbnailsDir = path.join(thumbnailsDir, "bookmarks");
