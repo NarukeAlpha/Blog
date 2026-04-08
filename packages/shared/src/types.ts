@@ -112,13 +112,24 @@ export interface SiteOverview extends SiteCounts {
 }
 
 export interface PostPublishPayload {
-  title?: string;
-  body?: string;
+  title: string;
+  body: string;
 }
 
 export interface BookmarkPublishPayload {
-  url?: string;
-  note?: string;
+  url: string;
+  note: string;
+}
+
+export interface StudioBookmarkPublishRequest extends BookmarkPublishPayload {
+  title: string;
+  description: string;
+  source: string;
+  thumbnailSourceUrl?: string;
+}
+
+export interface StudioErrorResponse {
+  error: string;
 }
 
 export interface PostPublishResult {
@@ -137,8 +148,8 @@ export interface StudioBridge {
   getBootstrap: () => Promise<StudioBootstrap>;
   getStatus: () => Promise<StudioStatus>;
   saveSettings: (payload: SaveStudioSettingsPayload) => Promise<StudioBootstrap>;
-  publishPost: (payload: { title: string; body: string }) => Promise<PostPublishResult>;
-  publishBookmark: (payload: { url: string; note: string }) => Promise<BookmarkPublishResult>;
+  publishPost: (payload: PostPublishPayload) => Promise<PostPublishResult>;
+  publishBookmark: (payload: BookmarkPublishPayload) => Promise<BookmarkPublishResult>;
   openExternal: (url: string) => Promise<void>;
 }
 

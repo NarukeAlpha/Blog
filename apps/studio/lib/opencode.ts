@@ -4,18 +4,18 @@ import { createOpencodeClient, type Part } from "@opencode-ai/sdk/v2";
 
 import { DEFAULT_OPENCODE_BASE_URL, getStudioPaths } from "./paths";
 import { getStudioRuntimeSettings } from "./settings";
-import type { BookmarkResearchResult, OpencodeServerStatus } from "../../../packages/shared/src/types";
+import type { BookmarkResearchResult, OpencodeServerStatus } from "@shared/types";
 
 interface HealthResponse {
   healthy?: boolean;
 }
 
-interface PromptEnvelope<T> {
-  data?: T;
-}
-
 interface SessionInfoResponse {
   id: string;
+}
+
+interface SessionStatusResponse {
+  type?: string;
 }
 
 interface PromptErrorResponse {
@@ -114,16 +114,73 @@ function getServerArguments(baseUrl: string) {
   }
 }
 
-function unwrap<T>(response: PromptEnvelope<T> | T | undefined | null) {
-  if (response && typeof response === "object" && "data" in response && response.data) {
+function unwrapResponseData(response: unknown) {
+  if (isRecord(response) && "data" in response) {
     return response.data;
   }
 
-  return response as T | undefined;
+  return response;
 }
 
 function isRecord(value: unknown): value is Record<string, unknown> {
-  return Boolean(value) && typeof value === "object";
+  return Boolean(value) && typeof value === "object" && !Array.isArray(value);
+}
+
+function parseHealthResponse(value: unknown): HealthResponse | null {
+  if (!isRecord(value)) {
+    return null;
+  }
+
+  if (typeof value.healthy !== "boolean" && typeof value.healthy !== "undefined") {
+    return null;
+  }
+
+  return {
+    healthy: value.healthy
+  };
+}
+
+function parseSessionInfoResponse(value: unknown): SessionInfoResponse | null {
+  const response = unwrapResponseData(value);
+
+  if (!isRecord(response) || typeof response.id !== "string") {
+    return null;
+  }
+
+  return {
+    id: response.id
+  };
+}
+
+function parseSessionStatusMap(value: unknown) {
+  const response = unwrapResponseData(value);
+
+  if (!isRecord(response)) {
+    return {};
+  }
+
+  const statusMap: Record<string, SessionStatusResponse> = {};
+
+  for (const [sessionID, entry] of Object.entries(response)) {
+    if (!isRecord(entry)) {
+      continue;
+    }
+
+    if (typeof entry.type === "string" || typeof entry.type === "undefined") {
+      statusMap[sessionID] = { type: entry.type };
+    }
+  }
+
+  return statusMap;
+}
+
+function isSessionMessageRecord(value: unknown): value is SessionMessageRecord {
+  return isRecord(value);
+}
+
+function parseSessionMessages(value: unknown) {
+  const response = unwrapResponseData(value);
+  return Array.isArray(response) ? response.filter(isSessionMessageRecord) : [];
 }
 
 function sleep(ms: number) {
@@ -293,7 +350,7 @@ async function getHealth(baseUrl: string) {
     return null;
   }
 
-  return (await response.json()) as HealthResponse;
+  return parseHealthResponse(await response.json().catch(() => null));
 }
 
 export async function isOpencodeConfigured() {
@@ -439,8 +496,7 @@ async function resolveBookmarkMetadata(sessionID: string, baseUrl: string) {
   let lastAssistantError = "";
 
   while (Date.now() - startedAt < BOOKMARK_RESPONSE_TIMEOUT_MS) {
-    const messages =
-      unwrap<Array<SessionMessageRecord>>(await client.session.messages({ sessionID, limit: 20 })) || [];
+    const messages = parseSessionMessages(await client.session.messages({ sessionID, limit: 20 }));
 
     const assistantMessages = messages.filter((message) => message.info?.role === "assistant");
 
@@ -463,7 +519,7 @@ async function resolveBookmarkMetadata(sessionID: string, baseUrl: string) {
       throw new Error(lastAssistantError);
     }
 
-    const statusMap = unwrap<Record<string, { type?: string }>>(await client.session.status({})) || {};
+    const statusMap = parseSessionStatusMap(await client.session.status({}));
     const sessionStatus = statusMap[sessionID];
 
     if (sessionStatus?.type === "idle" && assistantMessages.length > 0) {
@@ -480,9 +536,7 @@ export async function researchBookmark(url: string, note = ""): Promise<Bookmark
   const server = await ensureOpencodeServer();
   const { providerID, modelID } = await getOpencodeConfig();
   const client = getOpencodeClient(server.endpoint);
-  const createdSession = unwrap<SessionInfoResponse>(
-    await client.session.create({ title: `Bookmark research: ${url}` }) as PromptEnvelope<SessionInfoResponse>
-  );
+  const createdSession = parseSessionInfoResponse(await client.session.create({ title: `Bookmark research: ${url}` }));
 
   if (!createdSession?.id) {
     throw new Error("OpenCode could not create a bookmark session.");

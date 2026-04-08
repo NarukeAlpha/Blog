@@ -2,7 +2,7 @@ import { useCallback, useEffect, useState } from "react";
 import { AppWindow, LoaderCircle } from "lucide-react";
 
 import { StudioShell } from "@studio/components/studio-shell";
-import type { StudioBootstrap, StudioBridge } from "@shared/types";
+import type { StudioBootstrap } from "@shared/types";
 
 function getErrorMessage(error: unknown) {
   return error instanceof Error ? error.message : "Something went wrong while booting the studio.";
@@ -41,7 +41,7 @@ function LoadingShell({ detail }: { detail: string }) {
 }
 
 function App() {
-  const studio = window.studio as StudioBridge | undefined;
+  const studio = window.studio;
   const [bootstrap, setBootstrap] = useState<StudioBootstrap | null>(null);
   const [bootError, setBootError] = useState("");
 

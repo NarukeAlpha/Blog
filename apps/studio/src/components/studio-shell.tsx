@@ -25,8 +25,6 @@ import { Textarea } from "@studio/components/ui/textarea";
 import { cn } from "@studio/lib/utils";
 import { formatDate } from "@shared/text";
 import type {
-  BookmarkPublishResult,
-  PostPublishResult,
   SaveStudioEnvironmentSettingsPayload,
   SaveStudioSettingsPayload,
   StudioBootstrap,
@@ -253,7 +251,7 @@ export function StudioShell({ studio, settings, initialStatus, onBootstrapChange
     setBusyView("post");
 
     try {
-      const result = (await studio.publishPost(postDraft)) as PostPublishResult;
+      const result = await studio.publishPost(postDraft);
       showNotice("Post published", `${result.post.title} is now live through the ${activeEnvironmentLabel.toLowerCase()} Convex environment and visible from the public site feed.`, "success");
       setPostDraft({ title: "", body: "" });
       setView("dashboard");
@@ -270,7 +268,7 @@ export function StudioShell({ studio, settings, initialStatus, onBootstrapChange
     setBusyView("bookmarks");
 
     try {
-      const result = (await studio.publishBookmark(bookmarkDraft)) as BookmarkPublishResult;
+      const result = await studio.publishBookmark(bookmarkDraft);
       showNotice(
         "Bookmark published",
         result.thumbnailCachePath
