@@ -1,27 +1,45 @@
-export interface StudioSettings {
+export type StudioEnvironment = "dev" | "prod";
+
+export interface StudioEnvironmentSettings {
   convexUrl: string;
+  convexSiteUrl: string;
   publicSiteUrl: string;
+  deployKeyConfigured: boolean;
+}
+
+export interface StudioSettings {
+  selectedEnvironment: StudioEnvironment;
+  environments: Record<StudioEnvironment, StudioEnvironmentSettings>;
   opencodeCommand: string;
   opencodeBaseUrl: string;
   opencodeProviderId: string;
   opencodeModelId: string;
 }
 
-export interface SaveStudioSettingsPayload {
+export interface SaveStudioEnvironmentSettingsPayload {
   convexUrl?: string;
+  convexSiteUrl?: string;
   publicSiteUrl?: string;
+  deployKey?: string;
+}
+
+export interface SaveStudioSettingsPayload {
+  selectedEnvironment?: StudioEnvironment;
+  environments?: Partial<Record<StudioEnvironment, SaveStudioEnvironmentSettingsPayload>>;
+  clearDeployKeys?: StudioEnvironment[];
   opencodeCommand?: string;
   opencodeBaseUrl?: string;
   opencodeProviderId?: string;
   opencodeModelId?: string;
-  deployKey?: string;
-  clearDeployKey?: boolean;
 }
 
 export interface StudioStatus {
+  activeEnvironment: StudioEnvironment;
   appPath: string;
   userDataDir: string;
   thumbnailsDir: string;
+  convexUrl: string | null;
+  convexSiteUrl: string | null;
   publicSiteUrl: string | null;
   convexConfigured: boolean;
   convexReachable: boolean;

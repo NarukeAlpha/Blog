@@ -1,7 +1,7 @@
-import { createRequire } from "node:module";
 import { readFile, writeFile } from "node:fs/promises";
+import { createRequire } from "node:module";
 
-import type { SaveStudioSettingsPayload, StudioSettings } from "@shared/types";
+import type { SaveStudioSettingsPayload, StudioEnvironment, StudioSettings } from "@shared/types";
 import {
   DEFAULT_OPENCODE_BASE_URL,
   DEFAULT_OPENCODE_COMMAND,
@@ -13,29 +13,55 @@ import { ensureStudioDirectories } from "./workspace";
 
 const require = createRequire(import.meta.url);
 
+interface StoredStudioEnvironmentSettings {
+  convexUrl?: string;
+  convexSiteUrl?: string;
+  publicSiteUrl?: string;
+  encryptedDeployKey?: string;
+  plaintextDeployKey?: string;
+}
+
 interface StoredStudioSettings {
   version: number;
-  convexUrl?: string;
-  publicSiteUrl?: string;
+  selectedEnvironment?: StudioEnvironment;
+  environments?: Partial<Record<StudioEnvironment, StoredStudioEnvironmentSettings>>;
   opencodeCommand?: string;
   opencodeBaseUrl?: string;
   opencodeProviderId?: string;
   opencodeModelId?: string;
+  convexUrl?: string;
+  publicSiteUrl?: string;
   encryptedDeployKey?: string;
   plaintextDeployKey?: string;
   encryptedWriteKey?: string;
   plaintextWriteKey?: string;
 }
 
-export interface StudioRuntimeSettings extends StudioSettings {
+interface StudioRuntimeEnvironmentSettings {
+  convexUrl: string;
+  convexSiteUrl: string;
+  publicSiteUrl: string;
   deployKey: string;
 }
 
-const SETTINGS_VERSION = 1;
-
-function normalizeString(value: unknown) {
-  return typeof value === "string" ? value.trim() : "";
+export interface StudioRuntimeSettings {
+  selectedEnvironment: StudioEnvironment;
+  environments: Record<StudioEnvironment, StudioRuntimeEnvironmentSettings>;
+  opencodeCommand: string;
+  opencodeBaseUrl: string;
+  opencodeProviderId: string;
+  opencodeModelId: string;
 }
+
+interface EnvironmentDefaults {
+  convexUrl: string;
+  convexSiteUrl: string;
+  publicSiteUrl: string;
+  deployKey: string;
+}
+
+const SETTINGS_VERSION = 2;
+const STUDIO_ENVIRONMENTS: StudioEnvironment[] = ["dev", "prod"];
 
 function getSafeStorage() {
   try {
@@ -51,15 +77,75 @@ function getSafeStorage() {
   return null;
 }
 
-function getEnvironmentDefaults() {
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return Boolean(value) && typeof value === "object";
+}
+
+function normalizeString(value: unknown) {
+  return typeof value === "string" ? value.trim() : "";
+}
+
+function normalizeEnvironment(value: unknown): StudioEnvironment | null {
+  return value === "dev" || value === "prod" ? value : null;
+}
+
+function readEnvironmentVariable(name: string) {
+  return normalizeString(process.env[name]);
+}
+
+function getEnvironmentPrefix(environment: StudioEnvironment) {
+  return environment === "dev" ? "STUDIO_DEV" : "STUDIO_PROD";
+}
+
+function readEnvironmentDefaults(environment: StudioEnvironment): EnvironmentDefaults {
+  const prefix = getEnvironmentPrefix(environment);
+
   return {
+    convexUrl: readEnvironmentVariable(`${prefix}_CONVEX_URL`),
+    convexSiteUrl: readEnvironmentVariable(`${prefix}_CONVEX_SITE_URL`),
+    publicSiteUrl: readEnvironmentVariable(`${prefix}_PUBLIC_SITE_URL`),
+    deployKey: readEnvironmentVariable(`${prefix}_WRITE_KEY`)
+  };
+}
+
+function hasConfiguredEnvironment(defaults: EnvironmentDefaults) {
+  return Boolean(defaults.convexUrl || defaults.convexSiteUrl || defaults.publicSiteUrl || defaults.deployKey);
+}
+
+function getEnvironmentDefaults() {
+  const legacyProdDefaults: EnvironmentDefaults = {
     convexUrl: normalizeString(process.env.CONVEX_URL || process.env.VITE_CONVEX_URL),
+    convexSiteUrl: normalizeString(process.env.CONVEX_SITE_URL || process.env.VITE_CONVEX_SITE_URL),
     publicSiteUrl: normalizeString(process.env.PUBLIC_SITE_URL || process.env.VITE_PUBLIC_SITE_URL),
+    deployKey: normalizeString(process.env.STUDIO_WRITE_KEY || process.env.CONVEX_DEPLOY_KEY)
+  };
+  const prodDefaults = readEnvironmentDefaults("prod");
+  const defaults = {
+    environments: {
+      dev: readEnvironmentDefaults("dev"),
+      prod: {
+        convexUrl: prodDefaults.convexUrl || legacyProdDefaults.convexUrl,
+        convexSiteUrl: prodDefaults.convexSiteUrl || legacyProdDefaults.convexSiteUrl,
+        publicSiteUrl: prodDefaults.publicSiteUrl || legacyProdDefaults.publicSiteUrl,
+        deployKey: prodDefaults.deployKey || legacyProdDefaults.deployKey
+      }
+    },
     opencodeCommand: normalizeString(process.env.OPENCODE_COMMAND) || DEFAULT_OPENCODE_COMMAND,
     opencodeBaseUrl: normalizeString(process.env.OPENCODE_BASE_URL) || DEFAULT_OPENCODE_BASE_URL,
     opencodeProviderId: normalizeString(process.env.OPENCODE_PROVIDER_ID) || DEFAULT_OPENCODE_PROVIDER_ID,
-    opencodeModelId: normalizeString(process.env.OPENCODE_MODEL_ID) || DEFAULT_OPENCODE_MODEL_ID,
-    deployKey: normalizeString(process.env.STUDIO_WRITE_KEY || process.env.CONVEX_DEPLOY_KEY)
+    opencodeModelId: normalizeString(process.env.OPENCODE_MODEL_ID) || DEFAULT_OPENCODE_MODEL_ID
+  };
+  const configuredEnvironment = normalizeEnvironment(process.env.STUDIO_ENVIRONMENT);
+
+  return {
+    ...defaults,
+    selectedEnvironment:
+      configuredEnvironment
+      || (hasConfiguredEnvironment(defaults.environments.dev)
+        ? "dev"
+        : hasConfiguredEnvironment(defaults.environments.prod)
+          ? "prod"
+          : "dev")
   };
 }
 
@@ -70,7 +156,7 @@ async function readStoredSettings() {
     const raw = await readFile(settingsFile, "utf8");
     const parsed = JSON.parse(raw) as StoredStudioSettings;
 
-    return typeof parsed === "object" && parsed ? parsed : { version: SETTINGS_VERSION };
+    return isRecord(parsed) ? parsed : { version: SETTINGS_VERSION };
   } catch (error) {
     if ((error as NodeJS.ErrnoException).code === "ENOENT") {
       return { version: SETTINGS_VERSION };
@@ -90,6 +176,8 @@ function resolveRequiredString(storedValue: unknown, fallback: string) {
 }
 
 function decodeStoredSecret(storedValue: string | undefined) {
+  const safeStorage = getSafeStorage();
+
   if (typeof storedValue !== "string") {
     return null;
   }
@@ -99,8 +187,6 @@ function decodeStoredSecret(storedValue: string | undefined) {
   }
 
   try {
-    const safeStorage = getSafeStorage();
-
     if (safeStorage?.isEncryptionAvailable()) {
       return safeStorage.decryptString(Buffer.from(storedValue, "base64")).trim();
     }
@@ -111,7 +197,13 @@ function decodeStoredSecret(storedValue: string | undefined) {
   return null;
 }
 
-function decodeStoredDeployKey(stored: StoredStudioSettings, fallback: string) {
+function getStoredEnvironmentSettings(stored: StoredStudioSettings, environment: StudioEnvironment) {
+  const environments = isRecord(stored.environments) ? stored.environments : null;
+  const entry = environments?.[environment];
+  return isRecord(entry) ? (entry as StoredStudioEnvironmentSettings) : null;
+}
+
+function decodeLegacyDeployKey(stored: StoredStudioSettings, fallback: string) {
   const encryptedDeployKey = decodeStoredSecret(stored.encryptedDeployKey);
 
   if (encryptedDeployKey !== null) {
@@ -135,24 +227,76 @@ function decodeStoredDeployKey(stored: StoredStudioSettings, fallback: string) {
   return fallback;
 }
 
+function decodeStoredDeployKey(stored: StoredStudioSettings, environment: StudioEnvironment, fallback: string) {
+  const entry = getStoredEnvironmentSettings(stored, environment);
+  const encryptedDeployKey = decodeStoredSecret(entry?.encryptedDeployKey);
+
+  if (encryptedDeployKey !== null) {
+    return encryptedDeployKey;
+  }
+
+  if (typeof entry?.plaintextDeployKey === "string") {
+    return entry.plaintextDeployKey.trim();
+  }
+
+  if (environment === "prod") {
+    return decodeLegacyDeployKey(stored, fallback);
+  }
+
+  return fallback;
+}
+
 function toRuntimeSettings(stored: StoredStudioSettings): StudioRuntimeSettings {
   const defaults = getEnvironmentDefaults();
+  const hasLegacyProductionSettings = Boolean(
+    stored.convexUrl
+    || stored.publicSiteUrl
+    || stored.encryptedDeployKey
+    || stored.plaintextDeployKey
+    || stored.encryptedWriteKey
+    || stored.plaintextWriteKey
+  );
 
   return {
-    convexUrl: resolveStoredString(stored.convexUrl, defaults.convexUrl),
-    publicSiteUrl: resolveStoredString(stored.publicSiteUrl, defaults.publicSiteUrl),
+    selectedEnvironment: normalizeEnvironment(stored.selectedEnvironment) || (hasLegacyProductionSettings ? "prod" : defaults.selectedEnvironment),
+    environments: {
+      dev: {
+        convexUrl: resolveStoredString(getStoredEnvironmentSettings(stored, "dev")?.convexUrl, defaults.environments.dev.convexUrl),
+        convexSiteUrl: resolveStoredString(getStoredEnvironmentSettings(stored, "dev")?.convexSiteUrl, defaults.environments.dev.convexSiteUrl),
+        publicSiteUrl: resolveStoredString(getStoredEnvironmentSettings(stored, "dev")?.publicSiteUrl, defaults.environments.dev.publicSiteUrl),
+        deployKey: decodeStoredDeployKey(stored, "dev", defaults.environments.dev.deployKey)
+      },
+      prod: {
+        convexUrl: resolveStoredString(getStoredEnvironmentSettings(stored, "prod")?.convexUrl ?? stored.convexUrl, defaults.environments.prod.convexUrl),
+        convexSiteUrl: resolveStoredString(getStoredEnvironmentSettings(stored, "prod")?.convexSiteUrl, defaults.environments.prod.convexSiteUrl),
+        publicSiteUrl: resolveStoredString(getStoredEnvironmentSettings(stored, "prod")?.publicSiteUrl ?? stored.publicSiteUrl, defaults.environments.prod.publicSiteUrl),
+        deployKey: decodeStoredDeployKey(stored, "prod", defaults.environments.prod.deployKey)
+      }
+    },
     opencodeCommand: resolveStoredString(stored.opencodeCommand, defaults.opencodeCommand),
     opencodeBaseUrl: resolveStoredString(stored.opencodeBaseUrl, defaults.opencodeBaseUrl),
     opencodeProviderId: resolveRequiredString(stored.opencodeProviderId, defaults.opencodeProviderId),
-    opencodeModelId: resolveRequiredString(stored.opencodeModelId, defaults.opencodeModelId),
-    deployKey: decodeStoredDeployKey(stored, defaults.deployKey)
+    opencodeModelId: resolveRequiredString(stored.opencodeModelId, defaults.opencodeModelId)
   };
 }
 
 function toPublicSettings(settings: StudioRuntimeSettings): StudioSettings {
   return {
-    convexUrl: settings.convexUrl,
-    publicSiteUrl: settings.publicSiteUrl,
+    selectedEnvironment: settings.selectedEnvironment,
+    environments: {
+      dev: {
+        convexUrl: settings.environments.dev.convexUrl,
+        convexSiteUrl: settings.environments.dev.convexSiteUrl,
+        publicSiteUrl: settings.environments.dev.publicSiteUrl,
+        deployKeyConfigured: Boolean(settings.environments.dev.deployKey)
+      },
+      prod: {
+        convexUrl: settings.environments.prod.convexUrl,
+        convexSiteUrl: settings.environments.prod.convexSiteUrl,
+        publicSiteUrl: settings.environments.prod.publicSiteUrl,
+        deployKeyConfigured: Boolean(settings.environments.prod.deployKey)
+      }
+    },
     opencodeCommand: settings.opencodeCommand,
     opencodeBaseUrl: settings.opencodeBaseUrl,
     opencodeProviderId: settings.opencodeProviderId,
@@ -164,15 +308,32 @@ function normalizeSavePayload(payload: SaveStudioSettingsPayload | null | undefi
   return payload && typeof payload === "object" ? payload : {};
 }
 
+function normalizeClearDeployKeys(clearDeployKeys: unknown) {
+  if (!Array.isArray(clearDeployKeys)) {
+    return new Set<StudioEnvironment>();
+  }
+
+  return new Set(clearDeployKeys.map((entry) => normalizeEnvironment(entry)).filter((entry): entry is StudioEnvironment => entry !== null));
+}
+
+function getEnvironmentPayload(payload: SaveStudioSettingsPayload, environment: StudioEnvironment) {
+  if (!isRecord(payload.environments)) {
+    return null;
+  }
+
+  const entry = payload.environments[environment];
+  return isRecord(entry) ? entry : null;
+}
+
 function encodeDeployKey(deployKey: string) {
+  const safeStorage = getSafeStorage();
+
   if (!deployKey) {
     return {
       encryptedDeployKey: "",
       plaintextDeployKey: ""
     };
   }
-
-  const safeStorage = getSafeStorage();
 
   if (safeStorage?.isEncryptionAvailable()) {
     return {
@@ -191,38 +352,74 @@ export async function getStudioRuntimeSettings() {
   return toRuntimeSettings(await readStoredSettings());
 }
 
+export async function getActiveStudioRuntimeSettings() {
+  const settings = await getStudioRuntimeSettings();
+  return {
+    environment: settings.selectedEnvironment,
+    ...settings.environments[settings.selectedEnvironment]
+  };
+}
+
 export async function getStudioSettings() {
   return toPublicSettings(await getStudioRuntimeSettings());
 }
 
 export async function saveStudioSettings(payload: SaveStudioSettingsPayload) {
   const input = normalizeSavePayload(payload);
-  const stored = await readStoredSettings();
-  const current = toRuntimeSettings(stored);
-  const nextDeployKey = input.clearDeployKey ? "" : typeof input.deployKey === "string" ? input.deployKey.trim() : current.deployKey;
-  const encodedDeployKey = encodeDeployKey(nextDeployKey);
-
-  const nextStored: StoredStudioSettings = {
-    version: SETTINGS_VERSION,
-    convexUrl: typeof input.convexUrl === "string" ? input.convexUrl.trim() : current.convexUrl,
-    publicSiteUrl: typeof input.publicSiteUrl === "string" ? input.publicSiteUrl.trim() : current.publicSiteUrl,
+  const current = await getStudioRuntimeSettings();
+  const clearDeployKeys = normalizeClearDeployKeys(input.clearDeployKeys);
+  const nextSettings: StudioRuntimeSettings = {
+    selectedEnvironment: normalizeEnvironment(input.selectedEnvironment) || current.selectedEnvironment,
+    environments: {
+      dev: { ...current.environments.dev },
+      prod: { ...current.environments.prod }
+    },
     opencodeCommand: typeof input.opencodeCommand === "string" ? input.opencodeCommand.trim() : current.opencodeCommand,
     opencodeBaseUrl: typeof input.opencodeBaseUrl === "string" ? input.opencodeBaseUrl.trim() : current.opencodeBaseUrl,
     opencodeProviderId: typeof input.opencodeProviderId === "string" ? input.opencodeProviderId.trim() : current.opencodeProviderId,
-    opencodeModelId: typeof input.opencodeModelId === "string" ? input.opencodeModelId.trim() : current.opencodeModelId,
-    ...encodedDeployKey
+    opencodeModelId: typeof input.opencodeModelId === "string" ? input.opencodeModelId.trim() : current.opencodeModelId
+  };
+
+  for (const environment of STUDIO_ENVIRONMENTS) {
+    const currentEnvironment = current.environments[environment];
+    const environmentInput = getEnvironmentPayload(input, environment);
+    const providedDeployKey = typeof environmentInput?.deployKey === "string" ? environmentInput.deployKey.trim() : "";
+
+    nextSettings.environments[environment] = {
+      convexUrl: typeof environmentInput?.convexUrl === "string" ? environmentInput.convexUrl.trim() : currentEnvironment.convexUrl,
+      convexSiteUrl: typeof environmentInput?.convexSiteUrl === "string" ? environmentInput.convexSiteUrl.trim() : currentEnvironment.convexSiteUrl,
+      publicSiteUrl: typeof environmentInput?.publicSiteUrl === "string" ? environmentInput.publicSiteUrl.trim() : currentEnvironment.publicSiteUrl,
+      deployKey: clearDeployKeys.has(environment)
+        ? ""
+        : providedDeployKey || currentEnvironment.deployKey
+    };
+  }
+
+  const nextStored: StoredStudioSettings = {
+    version: SETTINGS_VERSION,
+    selectedEnvironment: nextSettings.selectedEnvironment,
+    environments: {
+      dev: {
+        convexUrl: nextSettings.environments.dev.convexUrl,
+        convexSiteUrl: nextSettings.environments.dev.convexSiteUrl,
+        publicSiteUrl: nextSettings.environments.dev.publicSiteUrl,
+        ...encodeDeployKey(nextSettings.environments.dev.deployKey)
+      },
+      prod: {
+        convexUrl: nextSettings.environments.prod.convexUrl,
+        convexSiteUrl: nextSettings.environments.prod.convexSiteUrl,
+        publicSiteUrl: nextSettings.environments.prod.publicSiteUrl,
+        ...encodeDeployKey(nextSettings.environments.prod.deployKey)
+      }
+    },
+    opencodeCommand: nextSettings.opencodeCommand,
+    opencodeBaseUrl: nextSettings.opencodeBaseUrl,
+    opencodeProviderId: nextSettings.opencodeProviderId,
+    opencodeModelId: nextSettings.opencodeModelId
   };
 
   await ensureStudioDirectories();
   await writeFile(getStudioPaths().settingsFile, `${JSON.stringify(nextStored, null, 2)}\n`, "utf8");
 
-  return toPublicSettings({
-    convexUrl: nextStored.convexUrl || "",
-    publicSiteUrl: nextStored.publicSiteUrl || "",
-    opencodeCommand: nextStored.opencodeCommand || "",
-    opencodeBaseUrl: nextStored.opencodeBaseUrl || DEFAULT_OPENCODE_BASE_URL,
-    opencodeProviderId: nextStored.opencodeProviderId || DEFAULT_OPENCODE_PROVIDER_ID,
-    opencodeModelId: nextStored.opencodeModelId || DEFAULT_OPENCODE_MODEL_ID,
-    deployKey: nextDeployKey
-  });
+  return toPublicSettings(nextSettings);
 }

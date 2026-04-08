@@ -13,10 +13,11 @@ The website and the Electron studio now live in separate directories while shari
 ## Local setup
 
 1. Install dependencies with `npm install`.
-2. Install the OpenCode CLI and configure a model/provider if you want bookmark enrichment on that machine.
-3. Copy `.env.example` to `.env.local` if you want the site build and local Electron dev run to start with seeded defaults.
-4. Set `STUDIO_WRITE_KEY` inside the Convex deployment.
-5. In the packaged studio, save the Convex URL, public site URL, and local write key through the Settings screen.
+2. Copy `.env.example` to `.env.local` so the local site and studio default to the hosted `dev` Convex deployment.
+3. Install the OpenCode CLI and configure a model/provider if you want bookmark enrichment on that machine.
+4. Set `STUDIO_WRITE_KEY` inside each hosted Convex deployment that the studio should publish to.
+5. In the Electron studio Settings screen, choose `dev` or `prod`, then save the matching Convex cloud URL, Convex action URL, public site URL, and write key for that target.
+6. Only run `npm run dev:convex` when you explicitly want to test against a local Convex backend instead of the hosted `dev` deployment.
 
 ## Scripts
 
@@ -30,6 +31,12 @@ The website and the Electron studio now live in separate directories while shari
 - `npm test` - unit tests for shared content and thumbnail helpers.
 
 ## Publishing flow
+
+### Environments
+
+- Local site and studio runs use the hosted `dev` Convex deployment by default.
+- The Electron studio keeps separate saved targets for hosted `dev` and `prod` Convex deployments.
+- Cloudflare production points at `https://ardent-firefly-400.convex.cloud`.
 
 ### Posts
 
