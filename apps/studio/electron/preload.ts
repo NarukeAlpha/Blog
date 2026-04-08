@@ -1,11 +1,14 @@
 import { contextBridge, ipcRenderer } from "electron";
+import type { BookmarkPublishPayload, PostPublishPayload, SaveStudioSettingsPayload, StudioBridge } from "@shared/types";
 
-contextBridge.exposeInMainWorld("studio", {
+const studioBridge: StudioBridge = {
   platform: process.platform,
   getBootstrap: () => ipcRenderer.invoke("studio:get-bootstrap"),
   getStatus: () => ipcRenderer.invoke("studio:get-status"),
-  saveSettings: (payload: unknown) => ipcRenderer.invoke("studio:save-settings", payload),
-  publishPost: (payload: unknown) => ipcRenderer.invoke("studio:publish-post", payload),
-  publishBookmark: (payload: unknown) => ipcRenderer.invoke("studio:publish-bookmark", payload),
+  saveSettings: (payload: SaveStudioSettingsPayload) => ipcRenderer.invoke("studio:save-settings", payload),
+  publishPost: (payload: PostPublishPayload) => ipcRenderer.invoke("studio:publish-post", payload),
+  publishBookmark: (payload: BookmarkPublishPayload) => ipcRenderer.invoke("studio:publish-bookmark", payload),
   openExternal: (url: string) => ipcRenderer.invoke("studio:open-external", url)
-});
+};
+
+contextBridge.exposeInMainWorld("studio", studioBridge);

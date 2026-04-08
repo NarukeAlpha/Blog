@@ -44,7 +44,7 @@ function LoadingScreen({ detail }: { detail: string }) {
 }
 
 export function StudioProvider({ children }: { children: ReactNode }) {
-  const bridge = (window as Record<string, unknown>).studio as StudioBridge | undefined;
+  const bridge = window.studio;
   const [bootstrap, setBootstrap] = useState<StudioBootstrap | null>(null);
   const [bootError, setBootError] = useState("");
   const [isLoadingStatus, setIsLoadingStatus] = useState(false);

@@ -1,11 +1,121 @@
 import { ConvexHttpClient } from "convex/browser";
 
 import { api } from "@convex/_generated/api";
-import type { BookmarkRecord, PostRecord, SiteCounts, SiteOverview } from "@shared/types";
+import type {
+  BookmarkRecord,
+  PostPublishPayload,
+  PostRecord,
+  PostSummaryRecord,
+  PublicBookmarkRecord,
+  SiteCounts,
+  SiteOverview,
+  StudioBookmarkPublishRequest,
+  StudioErrorResponse
+} from "@shared/types";
 import { getActiveStudioRuntimeSettings } from "./settings";
 
 let client: ConvexHttpClient | null = null;
 let clientUrl = "";
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return Boolean(value) && typeof value === "object" && !Array.isArray(value);
+}
+
+function readRequiredString(value: Record<string, unknown>, key: string, context: string) {
+  const entry = value[key];
+
+  if (typeof entry !== "string") {
+    throw new Error(`Studio ${context} returned an invalid response.`);
+  }
+
+  return entry;
+}
+
+function readRequiredNumber(value: Record<string, unknown>, key: string, context: string) {
+  const entry = value[key];
+
+  if (typeof entry !== "number") {
+    throw new Error(`Studio ${context} returned an invalid response.`);
+  }
+
+  return entry;
+}
+
+function parseStudioErrorResponse(value: unknown): StudioErrorResponse | null {
+  if (!isRecord(value) || typeof value.error !== "string") {
+    return null;
+  }
+
+  return { error: value.error };
+}
+
+function parsePostSummaryRecord(value: unknown): PostSummaryRecord {
+  if (!isRecord(value)) {
+    throw new Error("Studio site overview returned an invalid response.");
+  }
+
+  return {
+    slug: readRequiredString(value, "slug", "site overview"),
+    title: readRequiredString(value, "title", "site overview"),
+    excerpt: readRequiredString(value, "excerpt", "site overview"),
+    publishedAt: readRequiredNumber(value, "publishedAt", "site overview"),
+    readingTimeMinutes: readRequiredNumber(value, "readingTimeMinutes", "site overview")
+  };
+}
+
+function parsePublicBookmarkRecord(value: unknown, context: string): PublicBookmarkRecord {
+  if (!isRecord(value)) {
+    throw new Error(`Studio ${context} returned an invalid response.`);
+  }
+
+  return {
+    url: readRequiredString(value, "url", context),
+    title: readRequiredString(value, "title", context),
+    description: readRequiredString(value, "description", context),
+    source: readRequiredString(value, "source", context),
+    thumbnailUrl: readRequiredString(value, "thumbnailUrl", context),
+    addedAt: readRequiredNumber(value, "addedAt", context)
+  };
+}
+
+function parseSiteOverview(value: unknown): SiteOverview {
+  if (!isRecord(value) || !Array.isArray(value.latestPosts) || !Array.isArray(value.latestBookmarks)) {
+    throw new Error("Studio site overview returned an invalid response.");
+  }
+
+  return {
+    postCount: readRequiredNumber(value, "postCount", "site overview"),
+    bookmarkCount: readRequiredNumber(value, "bookmarkCount", "site overview"),
+    latestPosts: value.latestPosts.map((entry) => parsePostSummaryRecord(entry)),
+    latestBookmarks: value.latestBookmarks.map((entry) => parsePublicBookmarkRecord(entry, "site overview"))
+  };
+}
+
+function parsePostRecord(value: unknown): PostRecord {
+  if (!isRecord(value)) {
+    throw new Error("Studio post publish returned an invalid response.");
+  }
+
+  return {
+    slug: readRequiredString(value, "slug", "post publish"),
+    title: readRequiredString(value, "title", "post publish"),
+    body: readRequiredString(value, "body", "post publish"),
+    excerpt: readRequiredString(value, "excerpt", "post publish"),
+    publishedAt: readRequiredNumber(value, "publishedAt", "post publish"),
+    readingTimeMinutes: readRequiredNumber(value, "readingTimeMinutes", "post publish")
+  };
+}
+
+function parseBookmarkRecord(value: unknown): BookmarkRecord {
+  if (!isRecord(value)) {
+    throw new Error("Studio bookmark publish returned an invalid response.");
+  }
+
+  return {
+    ...parsePublicBookmarkRecord(value, "bookmark publish"),
+    note: readRequiredString(value, "note", "bookmark publish")
+  };
+}
 
 async function getConfiguredConvexUrl() {
   return (await getActiveStudioRuntimeSettings()).convexUrl;
@@ -95,7 +205,7 @@ export async function getConvexClient() {
   return client;
 }
 
-async function callStudioEndpoint<T>(path: string, body: Record<string, unknown>) {
+async function postStudioEndpoint(path: string, body: unknown) {
   const response = await fetch(`${await requireConvexSiteUrl()}${path}`, {
     method: "POST",
     headers: {
@@ -108,13 +218,11 @@ async function callStudioEndpoint<T>(path: string, body: Record<string, unknown>
   const payload = await response.json().catch(() => null);
 
   if (!response.ok) {
-    const message = payload && typeof payload === "object" && "error" in payload && typeof payload.error === "string"
-      ? payload.error
-      : `Studio request failed with status ${response.status}.`;
+    const message = parseStudioErrorResponse(payload)?.error || `Studio request failed with status ${response.status}.`;
     throw new Error(message);
   }
 
-  return payload as T;
+  return payload;
 }
 
 export async function isConvexReachable() {
@@ -135,21 +243,14 @@ export async function getPublicSiteCounts(): Promise<SiteCounts> {
   };
 }
 
-export async function getSiteOverview() {
-  return callStudioEndpoint<SiteOverview>("/studio/overview", {});
+export async function getSiteOverview(): Promise<SiteOverview> {
+  return parseSiteOverview(await postStudioEndpoint("/studio/overview", {}));
 }
 
-export async function publishStudioPost(args: { title: string; body: string }) {
-  return callStudioEndpoint<PostRecord>("/studio/posts", args);
+export async function publishStudioPost(args: PostPublishPayload): Promise<PostRecord> {
+  return parsePostRecord(await postStudioEndpoint("/studio/posts", args));
 }
 
-export async function publishStudioBookmark(args: {
-  url: string;
-  note: string;
-  title: string;
-  description: string;
-  source: string;
-  thumbnailSourceUrl?: string;
-}) {
-  return callStudioEndpoint<BookmarkRecord>("/studio/bookmarks", args);
+export async function publishStudioBookmark(args: StudioBookmarkPublishRequest): Promise<BookmarkRecord> {
+  return parseBookmarkRecord(await postStudioEndpoint("/studio/bookmarks", args));
 }

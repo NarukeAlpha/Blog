@@ -2,6 +2,7 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 
 import { app, BrowserWindow, ipcMain, shell } from "electron";
+import type { BookmarkPublishPayload, PostPublishPayload, SaveStudioSettingsPayload, StudioBootstrap, StudioStatus } from "@shared/types";
 
 import { getActiveStudioConnection, getPublicSiteCounts, getSiteOverview, hasDeployKey, isConvexConfigured, isConvexReachable } from "../lib/convex";
 import { loadWorkspaceEnv } from "../lib/env";
@@ -18,7 +19,7 @@ const rendererUrl = process.env.ELECTRON_RENDERER_URL;
 
 let mainWindow: BrowserWindow | null = null;
 
-async function getStatusPayload() {
+async function getStatusPayload(): Promise<StudioStatus> {
   const { appPath, thumbnailsDir, userDataDir } = getStudioPaths();
   const activeConnection = await getActiveStudioConnection();
   const opencodeReady = await isOpencodeHealthy();
@@ -83,7 +84,7 @@ async function getStatusPayload() {
   };
 }
 
-async function getBootstrapPayload() {
+async function getBootstrapPayload(): Promise<StudioBootstrap> {
   return {
     settings: await getStudioSettings(),
     status: await getStatusPayload()
@@ -93,12 +94,12 @@ async function getBootstrapPayload() {
 function registerIpc() {
   ipcMain.handle("studio:get-bootstrap", async () => getBootstrapPayload());
   ipcMain.handle("studio:get-status", async () => getStatusPayload());
-  ipcMain.handle("studio:save-settings", async (_event, payload) => {
+  ipcMain.handle("studio:save-settings", async (_event, payload: SaveStudioSettingsPayload) => {
     await saveStudioSettings(payload);
     return getBootstrapPayload();
   });
-  ipcMain.handle("studio:publish-post", async (_event, payload) => publishPostDraft(payload));
-  ipcMain.handle("studio:publish-bookmark", async (_event, payload) => publishBookmarkLink(payload));
+  ipcMain.handle("studio:publish-post", async (_event, payload: PostPublishPayload) => publishPostDraft(payload));
+  ipcMain.handle("studio:publish-bookmark", async (_event, payload: BookmarkPublishPayload) => publishBookmarkLink(payload));
   ipcMain.handle("studio:open-external", async (_event, url: string) => {
     await shell.openExternal(url);
   });

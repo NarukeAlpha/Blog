@@ -37,7 +37,7 @@ export function MarkdownEditor({ value, onChange }: MarkdownEditorProps) {
         <WordCount text={value} />
       </div>
 
-      <PanelGroup direction="horizontal" className="flex-1 overflow-hidden rounded-xl border border-border">
+      <PanelGroup orientation="horizontal" className="flex-1 overflow-hidden rounded-xl border border-border">
         <Panel defaultSize={50} minSize={30}>
           <textarea
             ref={textareaRef}

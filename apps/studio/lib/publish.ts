@@ -1,13 +1,13 @@
 import { publishStudioBookmark, publishStudioPost } from "./convex";
 import { researchBookmark } from "./opencode";
 import { mirrorThumbnailToPublic } from "./thumbnails";
-import { normalizeBookmarkUrl } from "../../../packages/shared/src/site";
-import { normalizeBody } from "../../../packages/shared/src/text";
-import type { BookmarkPublishPayload, BookmarkPublishResult, PostPublishPayload, PostPublishResult } from "../../../packages/shared/src/types";
+import { normalizeBookmarkUrl } from "@shared/site";
+import { normalizeBody } from "@shared/text";
+import type { BookmarkPublishPayload, BookmarkPublishResult, PostPublishPayload, PostPublishResult } from "@shared/types";
 
 export async function publishPostDraft(payload: PostPublishPayload): Promise<PostPublishResult> {
-  const title = String(payload.title || "").trim();
-  const body = normalizeBody(String(payload.body || ""));
+  const title = payload.title.trim();
+  const body = normalizeBody(payload.body);
 
   if (!title) {
     throw new Error("Posts need a title.");
@@ -29,8 +29,8 @@ export async function publishPostDraft(payload: PostPublishPayload): Promise<Pos
 }
 
 export async function publishBookmarkLink(payload: BookmarkPublishPayload): Promise<BookmarkPublishResult> {
-  const rawUrl = String(payload.url || "").trim();
-  const note = String(payload.note || "").trim();
+  const rawUrl = payload.url.trim();
+  const note = payload.note.trim();
   const normalizedUrl = normalizeBookmarkUrl(rawUrl);
 
   const metadata = await researchBookmark(normalizedUrl, note);
