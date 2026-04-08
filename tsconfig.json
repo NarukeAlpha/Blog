@@ -21,7 +21,7 @@
       "@site/*": ["apps/site/src/*"],
       "@studio/*": ["apps/studio/src/*"]
     },
-    "types": ["vite/client"]
+    "types": ["vite/client", "vitest/globals", "@testing-library/jest-dom"]
   },
-  "include": ["apps/**/*.ts", "apps/**/*.tsx", "packages/**/*.ts", "packages/**/*.tsx", "scripts/**/*.ts", "tests/**/*.ts", "convex/**/*.ts", "tailwind.config.ts"]
+  "include": ["apps/**/*.ts", "apps/**/*.tsx", "packages/**/*.ts", "packages/**/*.tsx", "scripts/**/*.ts", "tests/**/*.ts", "tests/**/*.tsx", "tests/**/*.d.ts", "convex/**/*.ts", "tailwind.config.ts"]
 }

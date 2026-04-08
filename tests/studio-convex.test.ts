@@ -11,14 +11,10 @@ const runtimeSettings = {
 };
 
 const clientInstances: Array<{ url: string; query: ReturnType<typeof vi.fn> }> = [];
-const ConvexHttpClient = vi.fn((url: string) => {
-  const instance = {
-    url,
-    query: vi.fn()
-  };
-
-  clientInstances.push(instance);
-  return instance;
+const ConvexHttpClient = vi.fn(function ConvexHttpClientMock(this: { url: string; query: ReturnType<typeof vi.fn> }, url: string) {
+  this.url = url;
+  this.query = vi.fn();
+  clientInstances.push(this);
 });
 
 vi.mock("convex/browser", () => ({

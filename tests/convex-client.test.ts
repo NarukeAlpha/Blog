@@ -1,6 +1,8 @@
 import { expect, test, vi } from "vitest";
 
-const ConvexReactClient = vi.fn((url: string) => ({ url }));
+const ConvexReactClient = vi.fn(function ConvexReactClientMock(this: { url: string }, url: string) {
+  this.url = url;
+});
 
 vi.mock("convex/react", () => ({
   ConvexReactClient
@@ -32,6 +34,6 @@ test("convex-client creates a React client when the public Convex URL is configu
   expect(clientModule.convexUrl).toBe("https://demo.convex.cloud");
   expect(clientModule.publicSiteUrl).toBe("https://blog.example.com");
   expect(clientModule.hasConvexConfig).toBe(true);
-  expect(clientModule.convexClient).toEqual({ url: "https://demo.convex.cloud" });
+  expect(clientModule.convexClient).toMatchObject({ url: "https://demo.convex.cloud" });
   expect(ConvexReactClient).toHaveBeenCalledWith("https://demo.convex.cloud");
 });

@@ -6,7 +6,8 @@ import { expect, test, vi } from "vitest";
 
 import App from "../apps/studio/src/app";
 
-function setWindowStudio(studio: StudioBridge) {
+function installStudioBridge(overrides: Partial<StudioBridge> = {}) {
+  const studio = createStudioBridge(overrides);
   (window as Window & { studio?: StudioBridge }).studio = studio;
   return studio;
 }
@@ -21,16 +22,12 @@ test("studio app blocks direct browser usage when the preload bridge is missing"
 test("studio app shows the loading shell while bootstrap is pending", () => {
   const getBootstrap = vi.fn(() => new Promise<StudioBootstrap>(() => {}));
 
-  setWindowStudio(
-    createStudioBridge({
-      getBootstrap
-    })
-  );
+  installStudioBridge({ getBootstrap });
 
   render(<App />);
 
   expect(screen.getByText(/Loading studio settings/i)).toBeInTheDocument();
-  expect(getBootstrap).toHaveBeenCalledTimes(1);
+  return waitFor(() => expect(getBootstrap).toHaveBeenCalledTimes(1));
 });
 
 test("studio app surfaces bootstrap errors", async () => {
@@ -38,24 +35,19 @@ test("studio app surfaces bootstrap errors", async () => {
     throw new Error("Bootstrap failed");
   });
 
-  setWindowStudio(
-    createStudioBridge({
-      getBootstrap
-    })
-  );
+  installStudioBridge({ getBootstrap });
 
   render(<App />);
 
-  await waitFor(() => {
-    expect(getBootstrap).toHaveBeenCalledTimes(1);
-    expect(screen.getByText("Bootstrap failed")).toBeInTheDocument();
-  });
+  expect(await screen.findByText("Bootstrap failed")).toBeInTheDocument();
+  expect(getBootstrap).toHaveBeenCalledTimes(1);
 });
 
 test("studio app renders the studio shell after bootstrap succeeds", async () => {
-  setWindowStudio(createStudioBridge());
+  const studio = installStudioBridge();
 
   render(<App />);
 
-  await waitFor(() => expect(screen.getByText(/The live publishing loop/i)).toBeInTheDocument());
+  expect(await screen.findByText(/The live publishing loop/i)).toBeInTheDocument();
+  await waitFor(() => expect(studio.getBootstrap).toHaveBeenCalledTimes(1));
 });

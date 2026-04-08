@@ -17,7 +17,9 @@ const browserWindowInstance = {
   }
 };
 
-const BrowserWindow = Object.assign(vi.fn(() => browserWindowInstance), {
+const BrowserWindow = Object.assign(vi.fn(function BrowserWindowMock() {
+  return browserWindowInstance;
+}), {
   getAllWindows: vi.fn(() => [])
 });
 
