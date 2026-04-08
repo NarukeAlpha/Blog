@@ -74,6 +74,20 @@ export interface PostSummaryRecord {
   readingTimeMinutes: number;
 }
 
+export interface AiResearchSummaryRecord {
+  slug: string;
+  title: string;
+  model: string;
+  excerpt: string;
+  publishedAt: number;
+  readingTimeMinutes: number;
+}
+
+export interface AiResearchRecord extends AiResearchSummaryRecord {
+  body: string;
+  prompt: string;
+}
+
 export interface PublicBookmarkRecord {
   url: string;
   title: string;

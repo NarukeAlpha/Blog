@@ -24,5 +24,16 @@ export default defineSchema({
     thumbnailStorageId: v.optional(v.id("_storage"))
   })
     .index("by_url", ["url"])
-    .index("by_addedAt", ["addedAt"])
+    .index("by_addedAt", ["addedAt"]),
+
+  aiResearch: defineTable({
+    slug: v.string(),
+    title: v.string(),
+    body: v.string(),
+    model: v.string(),
+    prompt: v.string(),
+    publishedAt: v.number()
+  })
+    .index("by_slug", ["slug"])
+    .index("by_publishedAt", ["publishedAt"])
 });
