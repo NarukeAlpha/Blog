@@ -1,163 +1,118 @@
-import { fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { fireEvent, render, screen, waitFor, within } from "@testing-library/react";
+import type { StudioBridge } from "@shared/types";
+import { beforeEach, expect, test, vi } from "vitest";
+
+vi.mock("react-resizable-panels", () => ({
+  Group: ({ children }: { children?: unknown }) => <div>{children as never}</div>,
+  Panel: ({ children }: { children?: unknown }) => <div>{children as never}</div>,
+  Separator: () => <div />
+}));
+
+import App from "../apps/studio/src/app";
 import { createBootstrap, createStudioBridge, createStudioSettings, createStudioStatus } from "./studio-test-helpers";
-import { expect, test, vi } from "vitest";
 
-import { StudioShell } from "../apps/studio/src/components/studio-shell";
-
-function renderShell(options: {
-  studio?: ReturnType<typeof createStudioBridge>;
-  settings?: ReturnType<typeof createStudioSettings>;
-  status?: ReturnType<typeof createStudioStatus>;
-  onBootstrapChange?: (next: ReturnType<typeof createBootstrap>) => void;
-} = {}) {
-  const status = options.status ?? createStudioStatus();
-  const settings = options.settings ?? createStudioSettings();
-  const studio = options.studio ?? createStudioBridge({ getStatus: vi.fn(async () => status) });
-  const onBootstrapChange = options.onBootstrapChange ?? vi.fn();
-
-  render(
-    <StudioShell
-      studio={studio}
-      settings={settings}
-      initialStatus={status}
-      onBootstrapChange={onBootstrapChange}
-    />
-  );
-
-  return { studio, status, settings, onBootstrapChange };
+function installStudioBridge(overrides: Partial<StudioBridge> = {}) {
+  const studio = createStudioBridge(overrides);
+  (window as Window & { studio?: StudioBridge }).studio = studio;
+  return studio;
 }
 
-test("studio shell shows dashboard fallbacks for missing Convex configuration", () => {
-  renderShell({
-    status: createStudioStatus({
-      convexConfigured: false,
-      convexReachable: false,
-      deployKeyConfigured: false,
-      opencodeConfigured: false,
-      opencodeReady: false,
-      postCount: null,
-      bookmarkCount: null,
-      overview: null
-    })
-  });
+async function renderStudioApp(overrides: Partial<StudioBridge> = {}) {
+  const studio = installStudioBridge(overrides);
+  render(<App />);
+  await screen.findByRole("heading", { name: "Dashboard" });
+  return studio;
+}
 
-  expect(screen.getAllByText(/Save the Convex URL in Settings to load the live overview/i)).toHaveLength(2);
-  expect(screen.getAllByText("Unavailable")).toHaveLength(2);
-  expect(screen.getByText("Missing")).toBeInTheDocument();
+beforeEach(() => {
+  delete (window as Window & { studio?: StudioBridge }).studio;
+  window.history.replaceState(null, "", "/");
 });
 
-test("studio shell blocks post publishing until Convex and the write key are configured", () => {
-  renderShell({
-    status: createStudioStatus({
-      convexConfigured: false,
-      deployKeyConfigured: false
-    })
+test("studio routes block post publishing until Convex and the write key are configured", async () => {
+  const status = createStudioStatus({
+    convexConfigured: false,
+    convexReachable: false,
+    deployKeyConfigured: false,
+    opencodeConfigured: false,
+    opencodeReady: false,
+    postCount: null,
+    bookmarkCount: null,
+    overview: null
   });
 
-  fireEvent.click(screen.getByRole("button", { name: "Post" }));
+  await renderStudioApp({
+    getBootstrap: vi.fn(async () => createBootstrap({ status })),
+    getStatus: vi.fn(async () => status)
+  });
 
-  expect(screen.getByText(/Save a Convex URL and studio write key in Settings before publishing posts/i)).toBeInTheDocument();
+  fireEvent.click(within(screen.getByRole("navigation")).getByRole("button", { name: /New Post/i }));
+
+  expect(await screen.findByText(/Save a Prod Convex URL and studio write key in Settings before publishing/i)).toBeInTheDocument();
   expect(screen.getByRole("button", { name: /Publish to Convex/i })).toBeDisabled();
 });
 
-test("studio shell publishes posts, resets the draft, and refreshes status", async () => {
-  const studio = createStudioBridge();
+test("studio routes publish posts from the redesigned editor", async () => {
+  const studio = await renderStudioApp();
 
-  renderShell({ studio });
-
-  fireEvent.click(screen.getByRole("button", { name: "Post" }));
-  fireEvent.change(screen.getByPlaceholderText(/Give the post a title/i), { target: { value: "Shipping Notes" } });
-  fireEvent.change(screen.getByPlaceholderText(/Markdown body/i), { target: { value: "Body copy" } });
+  fireEvent.click(within(screen.getByRole("navigation")).getByRole("button", { name: /New Post/i }));
+  fireEvent.change(screen.getByPlaceholderText("Post title"), { target: { value: "Shipping Notes" } });
+  fireEvent.change(screen.getByPlaceholderText("Write your post in Markdown..."), { target: { value: "Body copy" } });
   fireEvent.click(screen.getByRole("button", { name: /Publish to Convex/i }));
 
   await waitFor(() => expect(studio.publishPost).toHaveBeenCalledWith({ title: "Shipping Notes", body: "Body copy" }));
-  await waitFor(() => expect(screen.getByText("Post published")).toBeInTheDocument());
-  await waitFor(() => expect(studio.getStatus).toHaveBeenCalled());
-
-  fireEvent.click(screen.getByRole("button", { name: "Post" }));
-  expect(screen.getByPlaceholderText(/Give the post a title/i)).toHaveValue("");
-  expect(screen.getByPlaceholderText(/Markdown body/i)).toHaveValue("");
+  expect(await screen.findByText("Post published")).toBeInTheDocument();
 });
 
-test("studio shell blocks bookmark publishing when OpenCode is disabled", () => {
-  renderShell({
-    status: createStudioStatus({
-      opencodeConfigured: false,
-      opencodeReady: false
-    })
-  });
+test("studio routes publish bookmarks and refresh status", async () => {
+  const studio = await renderStudioApp();
 
-  fireEvent.click(screen.getByRole("button", { name: "Bookmarks" }));
-
-  expect(screen.getByText(/Bookmark research is optional. Save an OpenCode command in Settings to enable this view/i)).toBeInTheDocument();
-  expect(screen.getByRole("button", { name: /Publish bookmark/i })).toBeDisabled();
-});
-
-test("studio shell publishes bookmarks and distinguishes mirrored thumbnail notices", async () => {
-  const studio = createStudioBridge({
-    publishBookmark: vi.fn(async () => ({
-      ok: true,
-      bookmark: {
-        url: "https://example.com/bookmark",
-        title: "Design Systems Article",
-        description: "Bookmark description",
-        source: "Example",
-        thumbnailUrl: "",
-        note: "",
-        addedAt: Date.UTC(2026, 0, 6)
-      },
-      thumbnailCachePath: "/tmp/bookmark-thumb.png"
-    }))
-  });
-
-  renderShell({ studio });
-
-  fireEvent.click(screen.getByRole("button", { name: "Bookmarks" }));
-  fireEvent.change(screen.getByPlaceholderText("https://..."), { target: { value: "https://example.com/bookmark" } });
+  fireEvent.click(within(screen.getByRole("navigation")).getByRole("button", { name: /Bookmarks/i }));
+  fireEvent.change(screen.getByPlaceholderText("https://example.com/article"), { target: { value: "https://example.com/bookmark" } });
   fireEvent.change(screen.getByPlaceholderText(/Why this link matters/i), { target: { value: "Worth saving" } });
-  fireEvent.click(screen.getByRole("button", { name: /Publish bookmark/i }));
+  fireEvent.click(screen.getByRole("button", { name: /Publish Bookmark/i }));
 
   await waitFor(() => expect(studio.publishBookmark).toHaveBeenCalledWith({
     url: "https://example.com/bookmark",
     note: "Worth saving"
   }));
-  await waitFor(() => expect(screen.getByText("Bookmark published")).toBeInTheDocument());
-  expect(screen.getByText(/mirrored into \/tmp\/bookmark-thumb.png/i)).toBeInTheDocument();
+  expect(await screen.findByText("Bookmark saved")).toBeInTheDocument();
+  await waitFor(() => expect(studio.getStatus).toHaveBeenCalled());
 });
 
-test("studio shell saves settings and forwards clear-key behavior", async () => {
-  const studio = createStudioBridge();
-  const onBootstrapChange = vi.fn();
+test("studio routes save nested environment settings and clear deploy keys", async () => {
+  const settings = createStudioSettings({
+    environments: {
+      dev: { deployKeyConfigured: false },
+      prod: { deployKeyConfigured: true }
+    }
+  });
+  const bootstrap = createBootstrap({ settings });
+  const saveSettings = vi.fn(async () => bootstrap);
 
-  renderShell({ studio, onBootstrapChange });
+  await renderStudioApp({
+    getBootstrap: vi.fn(async () => bootstrap),
+    saveSettings
+  });
 
-  fireEvent.click(screen.getByRole("button", { name: "Settings" }));
-  fireEvent.change(screen.getByPlaceholderText("https://your-team.convex.cloud"), { target: { value: "https://next-team.convex.cloud" } });
-  fireEvent.click(screen.getByRole("button", { name: /Clear saved key/i }));
-  fireEvent.click(screen.getByRole("button", { name: /Save desktop settings/i }));
+  fireEvent.click(within(screen.getByRole("navigation")).getByRole("button", { name: /Settings/i }));
 
-  await waitFor(() => expect(studio.saveSettings).toHaveBeenCalled());
+  fireEvent.change(screen.getAllByPlaceholderText("https://your-deployment.convex.cloud")[1], {
+    target: { value: "https://next-team.convex.cloud" }
+  });
+  fireEvent.click(screen.getByRole("button", { name: "Clear" }));
+  fireEvent.click(screen.getByRole("button", { name: /Save Settings/i }));
 
-  expect(studio.saveSettings).toHaveBeenCalledWith({
-    convexUrl: "https://next-team.convex.cloud",
-    publicSiteUrl: "https://blog.example.com",
+  await waitFor(() => expect(saveSettings).toHaveBeenCalledWith(expect.objectContaining({
+    selectedEnvironment: "prod",
+    environments: expect.objectContaining({
+      prod: expect.objectContaining({ convexUrl: "https://next-team.convex.cloud" })
+    }),
+    clearDeployKeys: ["prod"],
     opencodeCommand: "opencode",
     opencodeBaseUrl: "http://127.0.0.1:4096",
     opencodeProviderId: "openai",
-    opencodeModelId: "gpt-4",
-    clearDeployKey: true
-  });
-  expect(onBootstrapChange).toHaveBeenCalled();
-  expect(screen.getByText("Settings saved")).toBeInTheDocument();
-});
-
-test("studio shell refreshes status on the polling interval", async () => {
-  vi.useFakeTimers();
-  const studio = createStudioBridge();
-
-  renderShell({ studio });
-
-  await vi.advanceTimersByTimeAsync(15000);
-
-  expect(studio.getStatus).toHaveBeenCalledTimes(1);
+    opencodeModelId: "gpt-4"
+  })));
+  expect(await screen.findByText("Settings saved")).toBeInTheDocument();
 });

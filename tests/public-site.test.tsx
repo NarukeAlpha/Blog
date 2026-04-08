@@ -2,8 +2,20 @@ import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import type { PostRecord, PublicBookmarkRecord } from "../packages/shared/src/types";
 import { beforeEach, expect, test, vi } from "vitest";
 
-const { useQuery } = vi.hoisted(() => ({
+const { api, useQuery } = vi.hoisted(() => ({
+  api: {
+    public: {
+      listPosts: Symbol("listPosts"),
+      listAiResearch: Symbol("listAiResearch"),
+      listBookmarks: Symbol("listBookmarks"),
+      getAiResearchBySlug: Symbol("getAiResearchBySlug")
+    }
+  },
   useQuery: vi.fn()
+}));
+
+vi.mock("@convex/_generated/api", () => ({
+  api
 }));
 
 vi.mock("convex/react", () => ({
@@ -51,16 +63,30 @@ const bookmarks: PublicBookmarkRecord[] = [
 ];
 
 function mockQueries(nextPosts: PostRecord[] = posts, nextBookmarks: PublicBookmarkRecord[] = bookmarks) {
-  let callIndex = 0;
+  useQuery.mockImplementation((query) => {
+    if (query === api.public.listPosts) {
+      return nextPosts;
+    }
 
-  useQuery.mockImplementation(() => {
-    callIndex += 1;
-    return callIndex % 2 === 1 ? nextPosts : nextBookmarks;
+    if (query === api.public.listAiResearch) {
+      return [];
+    }
+
+    if (query === api.public.listBookmarks) {
+      return nextBookmarks;
+    }
+
+    if (query === api.public.getAiResearchBySlug) {
+      return undefined;
+    }
+
+    return undefined;
   });
 }
 
 beforeEach(() => {
   useQuery.mockReset();
+  window.history.replaceState(null, "", "/");
 });
 
 test("public site falls back to empty states when no content exists", async () => {
@@ -71,7 +97,7 @@ test("public site falls back to empty states when no content exists", async () =
   expect(screen.getByText(/No posts yet/i)).toBeInTheDocument();
   fireEvent.click(screen.getByRole("button", { name: /reading list/i }));
   expect(screen.getByText(/No bookmarks yet/i)).toBeInTheDocument();
-  await waitFor(() => expect(window.location.hash).toBe(""));
+  await waitFor(() => expect(window.location.hash).toBe("#bookmarks"));
 });
 
 test("public site selects the first post and keeps the hash in sync", async () => {

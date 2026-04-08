@@ -79,7 +79,7 @@ test("studio HTTP routes register and enforce the write key", async () => {
   await expect(deniedResponse?.json()).resolves.toEqual({ error: "Invalid studio write key." });
 });
 
-test("studio HTTP routes coerce missing request fields into empty strings", async () => {
+test("studio HTTP routes reject invalid JSON request bodies", async () => {
   vi.resetModules();
   route.mockClear();
   requireStudioWriteKey.mockClear();
@@ -106,9 +106,7 @@ test("studio HTTP routes coerce missing request fields into empty strings", asyn
     })
   );
 
-  expect(runMutation).toHaveBeenCalledWith("posts.publish", {
-    title: "",
-    body: ""
-  });
-  expect(response?.status).toBe(200);
+  expect(runMutation).not.toHaveBeenCalled();
+  expect(response?.status).toBe(400);
+  await expect(response?.json()).resolves.toEqual({ error: "Studio request body must be valid JSON." });
 });

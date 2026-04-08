@@ -44,8 +44,14 @@ vi.mock("electron", () => ({
 }));
 
 vi.mock("../apps/studio/lib/convex", () => ({
+  getActiveStudioConnection: vi.fn(async () => ({
+    environment: "prod",
+    convexUrl: "https://demo.convex.cloud",
+    convexSiteUrl: "https://demo.convex.site",
+    publicSiteUrl: "https://blog.example.com",
+    deployKey: "studio-secret"
+  })),
   getPublicSiteCounts: vi.fn(async () => ({ postCount: 1, bookmarkCount: 1 })),
-  getPublicSiteUrl: vi.fn(async () => "https://blog.example.com"),
   getSiteOverview: vi.fn(async () => ({
     postCount: 1,
     bookmarkCount: 1,
@@ -83,8 +89,21 @@ vi.mock("../apps/studio/lib/publish", () => ({
 
 vi.mock("../apps/studio/lib/settings", () => ({
   getStudioSettings: vi.fn(async () => ({
-    convexUrl: "https://demo.convex.cloud",
-    publicSiteUrl: "https://blog.example.com",
+    selectedEnvironment: "prod",
+    environments: {
+      dev: {
+        convexUrl: "https://dev.demo.convex.cloud",
+        convexSiteUrl: "https://dev.demo.convex.site",
+        publicSiteUrl: "https://dev.blog.example.com",
+        deployKeyConfigured: false
+      },
+      prod: {
+        convexUrl: "https://demo.convex.cloud",
+        convexSiteUrl: "https://demo.convex.site",
+        publicSiteUrl: "https://blog.example.com",
+        deployKeyConfigured: true
+      }
+    },
     opencodeCommand: "opencode",
     opencodeBaseUrl: "http://127.0.0.1:4096",
     opencodeProviderId: "openai",

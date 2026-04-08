@@ -30,14 +30,28 @@ test("preload exposes the studio bridge and routes IPC calls", async () => {
 
   studioBridge.getBootstrap();
   studioBridge.getStatus();
-  studioBridge.saveSettings({ convexUrl: "https://demo.convex.cloud" });
+  studioBridge.saveSettings({
+    selectedEnvironment: "prod",
+    environments: {
+      prod: {
+        convexUrl: "https://demo.convex.cloud"
+      }
+    }
+  });
   studioBridge.publishPost({ title: "Hello", body: "Body" });
   studioBridge.publishBookmark({ url: "https://example.com", note: "Note" });
   studioBridge.openExternal("https://example.com");
 
   expect(invoke).toHaveBeenNthCalledWith(1, "studio:get-bootstrap");
   expect(invoke).toHaveBeenNthCalledWith(2, "studio:get-status");
-  expect(invoke).toHaveBeenNthCalledWith(3, "studio:save-settings", { convexUrl: "https://demo.convex.cloud" });
+  expect(invoke).toHaveBeenNthCalledWith(3, "studio:save-settings", {
+    selectedEnvironment: "prod",
+    environments: {
+      prod: {
+        convexUrl: "https://demo.convex.cloud"
+      }
+    }
+  });
   expect(invoke).toHaveBeenNthCalledWith(4, "studio:publish-post", { title: "Hello", body: "Body" });
   expect(invoke).toHaveBeenNthCalledWith(5, "studio:publish-bookmark", { url: "https://example.com", note: "Note" });
   expect(invoke).toHaveBeenNthCalledWith(6, "studio:open-external", "https://example.com");

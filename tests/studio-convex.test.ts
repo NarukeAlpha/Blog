@@ -1,12 +1,10 @@
 import { beforeEach, expect, test, vi } from "vitest";
 
 const runtimeSettings = {
+  environment: "prod",
   convexUrl: "https://demo.convex.cloud",
+  convexSiteUrl: "",
   publicSiteUrl: "https://blog.example.com",
-  opencodeCommand: "opencode",
-  opencodeBaseUrl: "http://127.0.0.1:4096",
-  opencodeProviderId: "openai",
-  opencodeModelId: "gpt-4",
   deployKey: "studio-secret"
 };
 
@@ -22,14 +20,16 @@ vi.mock("convex/browser", () => ({
 }));
 
 vi.mock("../apps/studio/lib/settings", () => ({
-  getStudioRuntimeSettings: vi.fn(async () => runtimeSettings)
+  getActiveStudioRuntimeSettings: vi.fn(async () => runtimeSettings)
 }));
 
 beforeEach(() => {
   vi.resetModules();
   clientInstances.length = 0;
   ConvexHttpClient.mockClear();
+  runtimeSettings.environment = "prod";
   runtimeSettings.convexUrl = "https://demo.convex.cloud";
+  runtimeSettings.convexSiteUrl = "";
   runtimeSettings.publicSiteUrl = "https://blog.example.com";
   runtimeSettings.deployKey = "studio-secret";
   vi.stubEnv("CONVEX_SITE_URL", "");

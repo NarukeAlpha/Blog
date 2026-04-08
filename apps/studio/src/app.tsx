@@ -1,77 +1,62 @@
-import { useCallback, useEffect, useState } from "react";
-import { AppWindow, LoaderCircle } from "lucide-react";
+import { useEffect } from "react";
+import { Router, Route, Switch, useLocation } from "wouter";
+import { useHashLocation } from "wouter/use-hash-location";
 
-import { StudioShell } from "@studio/components/studio-shell";
-import type { StudioBootstrap } from "@shared/types";
+import { StudioProvider } from "@studio/providers/studio-context";
+import { ToastProvider } from "@studio/providers/toast-provider";
+import { AppShell } from "@studio/components/layout/app-shell";
+import { DashboardPage } from "@studio/pages/dashboard";
+import { PostEditorPage } from "@studio/pages/post-editor";
+import { BookmarksPage } from "@studio/pages/bookmarks";
+import { SettingsPage } from "@studio/pages/settings";
+import { OnboardingPage } from "@studio/pages/onboarding";
 
-function getErrorMessage(error: unknown) {
-  return error instanceof Error ? error.message : "Something went wrong while booting the studio.";
-}
+function KeyboardShortcuts() {
+  const [, setLocation] = useLocation();
 
-function MissingBridge() {
-  return (
-    <main className="flex min-h-screen items-center justify-center px-6 py-12 text-foreground">
-      <section className="w-full max-w-xl rounded-[2rem] border border-white/20 bg-black/35 p-8 backdrop-blur-xl">
-        <div className="mb-5 inline-flex items-center gap-2 rounded-full border border-cyan-400/20 bg-cyan-400/10 px-3 py-1 text-xs uppercase tracking-[0.2em] text-cyan-200">
-          <AppWindow className="h-3.5 w-3.5" />
-          Electron only
-        </div>
-        <h1 className="text-3xl font-semibold tracking-tight text-white">Open the studio through Electron</h1>
-        <p className="mt-4 text-sm leading-7 text-slate-300">
-          This renderer expects the preload bridge. Use <code>npm run dev:studio</code> or the packaged desktop app instead of opening the page directly in a browser tab.
-        </p>
-      </section>
-    </main>
-  );
-}
+  useEffect(() => {
+    function handleKeyDown(e: KeyboardEvent) {
+      if (!e.metaKey && !e.ctrlKey) return;
+      const routes: Record<string, string> = { "1": "/", "2": "/post", "3": "/bookmarks", "4": "/settings" };
+      const route = routes[e.key];
+      if (route) {
+        e.preventDefault();
+        setLocation(route);
+      }
+    }
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [setLocation]);
 
-function LoadingShell({ detail }: { detail: string }) {
-  return (
-    <main className="flex min-h-screen items-center justify-center px-6 py-12 text-foreground">
-      <section className="w-full max-w-xl rounded-[2rem] border border-white/20 bg-black/35 p-8 backdrop-blur-xl">
-        <div className="mb-5 inline-flex items-center gap-2 rounded-full border border-white/15 bg-white/10 px-3 py-1 text-xs uppercase tracking-[0.2em] text-white/80">
-          <LoaderCircle className="h-3.5 w-3.5 animate-spin" />
-          Booting
-        </div>
-        <h1 className="text-3xl font-semibold tracking-tight text-white">Loading studio settings</h1>
-        <p className="mt-4 text-sm leading-7 text-slate-300">{detail || "Reading local app settings and checking the desktop runtime."}</p>
-      </section>
-    </main>
-  );
+  return null;
 }
 
 function App() {
-  const studio = window.studio;
-  const [bootstrap, setBootstrap] = useState<StudioBootstrap | null>(null);
-  const [bootError, setBootError] = useState("");
-
-  const refreshBootstrap = useCallback(async () => {
-    if (!studio) {
-      return;
-    }
-
-    try {
-      const next = await studio.getBootstrap();
-      setBootstrap(next);
-      setBootError("");
-    } catch (error) {
-      setBootError(getErrorMessage(error));
-    }
-  }, [studio]);
-
-  useEffect(() => {
-    void refreshBootstrap();
-  }, [refreshBootstrap]);
-
-  if (!studio) {
-    return <MissingBridge />;
-  }
-
-  if (!bootstrap) {
-    return <LoadingShell detail={bootError} />;
-  }
-
-  return <StudioShell studio={studio} settings={bootstrap.settings} initialStatus={bootstrap.status} onBootstrapChange={setBootstrap} />;
+  return (
+    <Router hook={useHashLocation}>
+      <ToastProvider>
+        <StudioProvider>
+          <KeyboardShortcuts />
+          <Switch>
+            <Route path="/onboarding" component={OnboardingPage} />
+            <Route>
+              <AppShell>
+                <Switch>
+                  <Route path="/" component={DashboardPage} />
+                  <Route path="/post" component={PostEditorPage} />
+                  <Route path="/bookmarks" component={BookmarksPage} />
+                  <Route path="/settings" component={SettingsPage} />
+                  <Route>
+                    <DashboardPage />
+                  </Route>
+                </Switch>
+              </AppShell>
+            </Route>
+          </Switch>
+        </StudioProvider>
+      </ToastProvider>
+    </Router>
+  );
 }
 
 export default App;
