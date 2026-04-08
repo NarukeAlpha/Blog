@@ -79,6 +79,8 @@ export function PublicSite() {
     api.public.getAiResearchBySlug,
     activeAiResearchSlug ? { slug: activeAiResearchSlug } : "skip"
   );
+  const isAiResearchLoading = activeAiResearchSlug !== null && activeAiResearch === undefined;
+  const isAiResearchMissing = activeAiResearchSlug !== null && activeAiResearch === null;
   const highlightedBookmarks = bookmarks.slice(0, 4);
   const latest = posts[0] ?? null;
 
@@ -274,7 +276,7 @@ export function PublicSite() {
               </div>
 
               <article className="pub-article" id="research">
-                {activeAiResearch ? (
+                {activeAiResearch !== undefined && activeAiResearch !== null ? (
                   <>
                     <div className="pub-article-header">
                       <p className="pub-article-meta">
@@ -290,8 +292,10 @@ export function PublicSite() {
                       <ReactMarkdown remarkPlugins={[remarkGfm]}>{activeAiResearch.body}</ReactMarkdown>
                     </div>
                   </>
-                ) : activeAiResearchSummary ? (
+                ) : isAiResearchLoading ? (
                   <p className="pub-article-empty">Loading AI research file...</p>
+                ) : isAiResearchMissing ? (
+                  <p className="pub-article-empty">AI research file not found.</p>
                 ) : (
                   <p className="pub-article-empty">Waiting for the first AI research file to land...</p>
                 )}
