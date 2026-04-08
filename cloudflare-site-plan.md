@@ -28,7 +28,7 @@
 - Build command: `npm run build:site`
 - Build output: `dist/site`
 - Public build env vars:
-  - `VITE_CONVEX_URL`
+  - `VITE_CONVEX_URL=https://ardent-firefly-400.convex.cloud`
   - `VITE_PUBLIC_SITE_URL=https://blog.alphadevahjin.com`
 - No custom Cloudflare Worker is required for the initial deployment.
 

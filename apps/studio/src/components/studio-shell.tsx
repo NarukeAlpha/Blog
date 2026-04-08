@@ -27,9 +27,11 @@ import { formatDate } from "@shared/text";
 import type {
   BookmarkPublishResult,
   PostPublishResult,
+  SaveStudioEnvironmentSettingsPayload,
   SaveStudioSettingsPayload,
   StudioBootstrap,
   StudioBridge,
+  StudioEnvironment,
   StudioSettings,
   StudioStatus
 } from "@shared/types";
@@ -44,13 +46,12 @@ interface NoticeState {
 }
 
 interface SettingsDraft {
-  convexUrl: string;
-  publicSiteUrl: string;
+  selectedEnvironment: StudioEnvironment;
+  environments: Record<StudioEnvironment, SaveStudioEnvironmentSettingsPayload & { deployKey: string }>;
   opencodeCommand: string;
   opencodeBaseUrl: string;
   opencodeProviderId: string;
   opencodeModelId: string;
-  deployKey: string;
 }
 
 interface StudioShellProps {
@@ -74,6 +75,11 @@ const noticeToneClasses: Record<NoticeTone, string> = {
   error: "border-destructive/20 bg-destructive/10 text-destructive"
 };
 
+const environmentLabels: Record<StudioEnvironment, string> = {
+  dev: "Dev",
+  prod: "Prod"
+};
+
 function getErrorMessage(error: unknown) {
   return error instanceof Error ? error.message : "Something went wrong.";
 }
@@ -83,15 +89,31 @@ function shortenPath(filePath: string) {
   return parts.slice(-3).join("/");
 }
 
+function formatEnvironmentLabel(environment: StudioEnvironment) {
+  return environmentLabels[environment];
+}
+
 function createSettingsDraft(settings: StudioSettings): SettingsDraft {
   return {
-    convexUrl: settings.convexUrl,
-    publicSiteUrl: settings.publicSiteUrl,
+    selectedEnvironment: settings.selectedEnvironment,
+    environments: {
+      dev: {
+        convexUrl: settings.environments.dev.convexUrl,
+        convexSiteUrl: settings.environments.dev.convexSiteUrl,
+        publicSiteUrl: settings.environments.dev.publicSiteUrl,
+        deployKey: ""
+      },
+      prod: {
+        convexUrl: settings.environments.prod.convexUrl,
+        convexSiteUrl: settings.environments.prod.convexSiteUrl,
+        publicSiteUrl: settings.environments.prod.publicSiteUrl,
+        deployKey: ""
+      }
+    },
     opencodeCommand: settings.opencodeCommand,
     opencodeBaseUrl: settings.opencodeBaseUrl,
     opencodeProviderId: settings.opencodeProviderId,
-    opencodeModelId: settings.opencodeModelId,
-    deployKey: ""
+    opencodeModelId: settings.opencodeModelId
   };
 }
 
@@ -104,7 +126,7 @@ export function StudioShell({ studio, settings, initialStatus, onBootstrapChange
   const [postDraft, setPostDraft] = useState({ title: "", body: "" });
   const [bookmarkDraft, setBookmarkDraft] = useState({ url: "", note: "" });
   const [settingsDraft, setSettingsDraft] = useState<SettingsDraft>(() => createSettingsDraft(settings));
-  const [clearDeployKey, setClearDeployKey] = useState(false);
+  const [clearDeployKeys, setClearDeployKeys] = useState<Record<StudioEnvironment, boolean>>({ dev: false, prod: false });
 
   useEffect(() => {
     setStatus(initialStatus);
@@ -112,13 +134,20 @@ export function StudioShell({ studio, settings, initialStatus, onBootstrapChange
 
   useEffect(() => {
     setSettingsDraft(createSettingsDraft(settings));
-    setClearDeployKey(false);
+    setClearDeployKeys({ dev: false, prod: false });
   }, [settings]);
+
+  const activeEnvironmentLabel = formatEnvironmentLabel(status.activeEnvironment);
+  const draftEnvironment = settingsDraft.selectedEnvironment;
+  const draftEnvironmentLabel = formatEnvironmentLabel(draftEnvironment);
+  const activeDraftEnvironmentSettings = settingsDraft.environments[draftEnvironment];
+  const savedDraftEnvironmentSettings = settings.environments[draftEnvironment];
+  const clearDeployKey = clearDeployKeys[draftEnvironment];
 
   const overview = status.overview;
   const overviewUnavailableMessage = useMemo(() => {
     if (loadingStatus) {
-      return "Loading the live overview...";
+      return `Loading the ${activeEnvironmentLabel.toLowerCase()} overview...`;
     }
 
     if (status.overviewError) {
@@ -126,19 +155,19 @@ export function StudioShell({ studio, settings, initialStatus, onBootstrapChange
     }
 
     if (!status.convexConfigured) {
-      return "Save the Convex URL in Settings to load the live overview.";
+      return `Save the ${activeEnvironmentLabel} Convex URL in Settings to load the live overview.`;
     }
 
     if (!status.convexReachable) {
-      return "Reconnect to the hosted Convex deployment to load the live overview.";
+      return `Reconnect to the ${activeEnvironmentLabel.toLowerCase()} Convex deployment to load the live overview.`;
     }
 
     if (!status.deployKeyConfigured) {
-      return "Save the studio write key in Settings to load the live overview.";
+      return `Save the ${activeEnvironmentLabel} studio write key in Settings to load the live overview.`;
     }
 
     return null;
-  }, [loadingStatus, status]);
+  }, [activeEnvironmentLabel, loadingStatus, status]);
 
   const showNotice = useCallback((title: string, detail: string, tone: NoticeTone = "neutral") => {
     setNotice({ title, detail, tone });
@@ -184,13 +213,40 @@ export function StudioShell({ studio, settings, initialStatus, onBootstrapChange
         value: loadingStatus ? "..." : status.bookmarkCount === null ? "Unavailable" : String(status.bookmarkCount),
         icon: BookmarkPlus
       },
+      { label: "Target", value: activeEnvironmentLabel, icon: Database },
       { label: "Convex", value: status.convexReachable ? "Live" : status.convexConfigured ? "Check link" : "Missing", icon: Database }
     ],
-    [loadingStatus, status]
+    [activeEnvironmentLabel, loadingStatus, status]
   );
 
   const canPublishPosts = status.convexConfigured && status.deployKeyConfigured;
   const canPublishBookmarks = canPublishPosts && status.opencodeConfigured;
+
+  function updateEnvironmentDraft<K extends keyof SaveStudioEnvironmentSettingsPayload>(environment: StudioEnvironment, field: K, value: string) {
+    setSettingsDraft((current) => ({
+      ...current,
+      environments: {
+        ...current.environments,
+        [environment]: {
+          ...current.environments[environment],
+          [field]: value
+        }
+      }
+    }));
+  }
+
+  function updateEnvironmentDeployKey(environment: StudioEnvironment, value: string) {
+    setSettingsDraft((current) => ({
+      ...current,
+      environments: {
+        ...current.environments,
+        [environment]: {
+          ...current.environments[environment],
+          deployKey: value
+        }
+      }
+    }));
+  }
 
   async function handlePostSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -198,7 +254,7 @@ export function StudioShell({ studio, settings, initialStatus, onBootstrapChange
 
     try {
       const result = (await studio.publishPost(postDraft)) as PostPublishResult;
-      showNotice("Post published", `${result.post.title} is now live through Convex and visible from the public site feed.`, "success");
+      showNotice("Post published", `${result.post.title} is now live through the ${activeEnvironmentLabel.toLowerCase()} Convex environment and visible from the public site feed.`, "success");
       setPostDraft({ title: "", body: "" });
       setView("dashboard");
       await refreshStatus();
@@ -218,8 +274,8 @@ export function StudioShell({ studio, settings, initialStatus, onBootstrapChange
       showNotice(
         "Bookmark published",
         result.thumbnailCachePath
-          ? `${result.bookmark.title} was saved to Convex and mirrored into ${result.thumbnailCachePath}.`
-          : `${result.bookmark.title} was saved to Convex and added to the public reading list.`,
+          ? `${result.bookmark.title} was saved to the ${activeEnvironmentLabel.toLowerCase()} Convex environment and mirrored into ${result.thumbnailCachePath}.`
+          : `${result.bookmark.title} was saved to the ${activeEnvironmentLabel.toLowerCase()} Convex environment and added to the public reading list.`,
         "success"
       );
 
@@ -238,25 +294,36 @@ export function StudioShell({ studio, settings, initialStatus, onBootstrapChange
     setBusyView("settings");
 
     const payload: SaveStudioSettingsPayload = {
-      convexUrl: settingsDraft.convexUrl,
-      publicSiteUrl: settingsDraft.publicSiteUrl,
+      selectedEnvironment: settingsDraft.selectedEnvironment,
+      environments: {
+        dev: {
+          convexUrl: settingsDraft.environments.dev.convexUrl,
+          convexSiteUrl: settingsDraft.environments.dev.convexSiteUrl,
+          publicSiteUrl: settingsDraft.environments.dev.publicSiteUrl,
+          deployKey: settingsDraft.environments.dev.deployKey
+        },
+        prod: {
+          convexUrl: settingsDraft.environments.prod.convexUrl,
+          convexSiteUrl: settingsDraft.environments.prod.convexSiteUrl,
+          publicSiteUrl: settingsDraft.environments.prod.publicSiteUrl,
+          deployKey: settingsDraft.environments.prod.deployKey
+        }
+      },
       opencodeCommand: settingsDraft.opencodeCommand,
       opencodeBaseUrl: settingsDraft.opencodeBaseUrl,
       opencodeProviderId: settingsDraft.opencodeProviderId,
       opencodeModelId: settingsDraft.opencodeModelId,
-      clearDeployKey
+      clearDeployKeys: Object.entries(clearDeployKeys)
+        .filter(([, shouldClear]) => shouldClear)
+        .map(([environment]) => environment as StudioEnvironment)
     };
-
-    if (settingsDraft.deployKey.trim()) {
-      payload.deployKey = settingsDraft.deployKey;
-    }
 
     try {
       const next = await studio.saveSettings(payload);
       onBootstrapChange(next);
       setStatus(next.status);
       setSettingsDraft(createSettingsDraft(next.settings));
-      setClearDeployKey(false);
+      setClearDeployKeys({ dev: false, prod: false });
       showNotice("Settings saved", "Desktop settings were saved locally. Restarting the app is not required.", "success");
     } catch (error) {
       showNotice("Settings failed", getErrorMessage(error), "error");
@@ -283,7 +350,7 @@ export function StudioShell({ studio, settings, initialStatus, onBootstrapChange
               </Badge>
               <div>
                 <CardTitle className="bg-[linear-gradient(135deg,#fff_0%,#c4b5fd_50%,#00d2e6_100%)] bg-clip-text text-2xl text-transparent">NarukeAlpha</CardTitle>
-                <p className="mt-1 text-sm text-muted-foreground">Local writing surface, hosted Convex sync.</p>
+                <p className="mt-1 text-sm text-muted-foreground">Local writing surface, active target: {activeEnvironmentLabel}.</p>
               </div>
             </div>
           </CardHeader>
@@ -365,7 +432,10 @@ export function StudioShell({ studio, settings, initialStatus, onBootstrapChange
                 <CardHeader className="border-b border-[var(--glass-border-subtle)] pb-5">
                   <div className="flex flex-wrap items-center justify-between gap-3">
                     <div>
-                      <Badge variant="outline" className="w-fit">Overview</Badge>
+                      <Badge variant="outline" className="w-fit gap-2">
+                        Overview
+                        <span className="text-foreground">{activeEnvironmentLabel}</span>
+                      </Badge>
                       <CardTitle className="mt-3 bg-[linear-gradient(135deg,#fff,#c4b5fd)] bg-clip-text text-3xl text-transparent">The live publishing loop</CardTitle>
                     </div>
                     <div className="flex items-center gap-2">
@@ -384,7 +454,7 @@ export function StudioShell({ studio, settings, initialStatus, onBootstrapChange
                 <CardContent className="grid gap-5 p-6">
                   <div className="glass-subtle rounded-[1.8rem] p-5">
                     <p className="text-sm leading-7 text-muted-foreground">
-                      This desktop app keeps its own settings, studio write key, and cache under your local app data folder. Convex stays the shared source of truth, so you can move between machines without syncing the repo.
+                      This desktop app keeps its own environment settings, studio write keys, and cache under your local app data folder. Convex stays the shared source of truth, so you can switch between dev and prod without syncing the repo.
                     </p>
                   </div>
 
@@ -393,17 +463,17 @@ export function StudioShell({ studio, settings, initialStatus, onBootstrapChange
                       {
                         label: "Hosted backend",
                         detail: status.convexReachable
-                          ? "The desktop app is talking to the saved Convex deployment."
+                          ? `The desktop app is talking to the saved ${activeEnvironmentLabel.toLowerCase()} Convex deployment.`
                           : status.convexConfigured
-                            ? "A Convex URL is saved, but the deployment is not responding right now."
-                            : "Save the Convex deployment URL in Settings before publishing.",
+                            ? `A ${activeEnvironmentLabel.toLowerCase()} Convex URL is saved, but the deployment is not responding right now.`
+                            : `Save the ${activeEnvironmentLabel} Convex deployment URL in Settings before publishing.`,
                         tone: status.convexReachable ? "success" : "warning"
                       },
                       {
                         label: "Studio auth",
                         detail: status.deployKeyConfigured
-                          ? "Electron has the shared studio write key and can call the protected Convex functions used by the studio."
-                          : "Save the studio write key locally before loading overview data or publishing content.",
+                          ? `Electron has the ${activeEnvironmentLabel.toLowerCase()} studio write key and can call the protected Convex functions used by the studio.`
+                          : `Save the ${activeEnvironmentLabel.toLowerCase()} studio write key locally before loading overview data or publishing content.`,
                         tone: status.deployKeyConfigured ? "success" : "warning"
                       },
                       {
@@ -425,7 +495,7 @@ export function StudioShell({ studio, settings, initialStatus, onBootstrapChange
 
                   {!status.convexConfigured || !status.deployKeyConfigured ? (
                     <div className="flex flex-wrap items-center justify-between gap-3 rounded-[1.6rem] border border-amber-400/20 bg-amber-400/10 p-4 text-sm text-amber-100">
-                      <p>Publishing is blocked until the desktop app has a Convex URL and studio write key.</p>
+                      <p>Publishing is blocked until the desktop app has a {activeEnvironmentLabel} Convex URL and studio write key.</p>
                       <Button variant="outline" onClick={() => setView("settings")}>Open settings</Button>
                     </div>
                   ) : null}
@@ -453,7 +523,7 @@ export function StudioShell({ studio, settings, initialStatus, onBootstrapChange
                       <p className="text-sm text-muted-foreground">{overviewUnavailableMessage}</p>
                     ) : (
                       <p className="text-sm text-muted-foreground">
-                        {status.convexConfigured ? "No posts yet. The first publish will show up here." : "Save the Convex URL in Settings to load live post data."}
+                        {status.convexConfigured ? `No ${activeEnvironmentLabel.toLowerCase()} posts yet. The first publish will show up here.` : `Save the ${activeEnvironmentLabel} Convex URL in Settings to load live post data.`}
                       </p>
                     )}
                   </CardContent>
@@ -479,7 +549,7 @@ export function StudioShell({ studio, settings, initialStatus, onBootstrapChange
                       <p className="text-sm text-muted-foreground">{overviewUnavailableMessage}</p>
                     ) : (
                       <p className="text-sm text-muted-foreground">
-                        {status.convexConfigured ? "Bookmark research results land here after a successful publish." : "Connect Convex in Settings before loading bookmark history."}
+                        {status.convexConfigured ? `Bookmark research results land here after a successful ${activeEnvironmentLabel.toLowerCase()} publish.` : `Connect the ${activeEnvironmentLabel} Convex deployment in Settings before loading bookmark history.`}
                       </p>
                     )}
                   </CardContent>
@@ -504,7 +574,7 @@ export function StudioShell({ studio, settings, initialStatus, onBootstrapChange
                 <form className="grid gap-4" onSubmit={handlePostSubmit}>
                   {!canPublishPosts ? (
                     <div className="rounded-[1.6rem] border border-amber-400/20 bg-amber-400/10 p-4 text-sm text-amber-100">
-                      Save a Convex URL and studio write key in Settings before publishing posts.
+                      Save a {activeEnvironmentLabel} Convex URL and studio write key in Settings before publishing posts.
                     </div>
                   ) : null}
 
@@ -552,7 +622,7 @@ export function StudioShell({ studio, settings, initialStatus, onBootstrapChange
                     </div>
                   ) : !canPublishPosts ? (
                     <div className="rounded-[1.6rem] border border-amber-400/20 bg-amber-400/10 p-4 text-sm text-amber-100">
-                      Save a Convex URL and studio write key in Settings before publishing bookmarks.
+                      Save a {activeEnvironmentLabel} Convex URL and studio write key in Settings before publishing bookmarks.
                     </div>
                   ) : null}
 
@@ -598,22 +668,52 @@ export function StudioShell({ studio, settings, initialStatus, onBootstrapChange
 
               <CardContent>
                 <form className="grid gap-5" onSubmit={handleSettingsSubmit}>
+                  <div className="grid gap-4 lg:grid-cols-[220px_minmax(0,1fr)]">
+                    <div className="grid gap-2">
+                      <label className="text-sm font-medium text-foreground">Active environment</label>
+                      <select
+                        className="glass-input h-11 rounded-2xl px-4 py-2 text-sm text-foreground focus-visible:outline-none"
+                        value={settingsDraft.selectedEnvironment}
+                        onChange={(event) => setSettingsDraft((current) => ({ ...current, selectedEnvironment: event.target.value as StudioEnvironment }))}
+                      >
+                        <option value="dev">Dev</option>
+                        <option value="prod">Prod</option>
+                      </select>
+                    </div>
+
+                    <div className="grid gap-2 rounded-[1.6rem] p-4 glass-subtle">
+                      <p className="text-sm font-medium text-foreground">{draftEnvironmentLabel} target</p>
+                      <p className="text-sm leading-7 text-muted-foreground">
+                        Saving this form switches the dashboard and publishing actions to the selected environment. Keep dev pointed at the hosted testing deployment and prod pointed at the Cloudflare-backed production deployment.
+                      </p>
+                    </div>
+                  </div>
+
                   <div className="grid gap-4 lg:grid-cols-2">
                     <div className="grid gap-2">
-                      <label className="text-sm font-medium text-foreground">Convex deployment URL</label>
+                      <label className="text-sm font-medium text-foreground">{draftEnvironmentLabel} Convex deployment URL</label>
                       <Input
-                        placeholder="https://your-team.convex.cloud"
-                        value={settingsDraft.convexUrl}
-                        onChange={(event) => setSettingsDraft((current) => ({ ...current, convexUrl: event.target.value }))}
+                        placeholder={draftEnvironment === "prod" ? "https://ardent-firefly-400.convex.cloud" : "https://your-dev-deployment.convex.cloud"}
+                        value={activeDraftEnvironmentSettings.convexUrl || ""}
+                        onChange={(event) => updateEnvironmentDraft(draftEnvironment, "convexUrl", event.target.value)}
                       />
                     </div>
 
                     <div className="grid gap-2">
-                      <label className="text-sm font-medium text-foreground">Public site URL</label>
+                      <label className="text-sm font-medium text-foreground">{draftEnvironmentLabel} Convex action URL</label>
+                      <Input
+                        placeholder={draftEnvironment === "prod" ? "https://ardent-firefly-400.convex.site" : "https://your-dev-deployment.convex.site"}
+                        value={activeDraftEnvironmentSettings.convexSiteUrl || ""}
+                        onChange={(event) => updateEnvironmentDraft(draftEnvironment, "convexSiteUrl", event.target.value)}
+                      />
+                    </div>
+
+                    <div className="grid gap-2">
+                      <label className="text-sm font-medium text-foreground">{draftEnvironmentLabel} public site URL</label>
                       <Input
                         placeholder="https://blog.example.com"
-                        value={settingsDraft.publicSiteUrl}
-                        onChange={(event) => setSettingsDraft((current) => ({ ...current, publicSiteUrl: event.target.value }))}
+                        value={activeDraftEnvironmentSettings.publicSiteUrl || ""}
+                        onChange={(event) => updateEnvironmentDraft(draftEnvironment, "publicSiteUrl", event.target.value)}
                       />
                     </div>
                   </div>
@@ -622,18 +722,22 @@ export function StudioShell({ studio, settings, initialStatus, onBootstrapChange
                     <div className="grid gap-2">
                       <label className="flex items-center gap-2 text-sm font-medium text-foreground">
                         <KeyRound className="h-4 w-4" />
-                        Studio write key
+                        {draftEnvironmentLabel} studio write key
                       </label>
                       <Input
                         type="password"
-                        placeholder={status.deployKeyConfigured && !clearDeployKey ? "Saved locally. Enter a new key to replace it." : "Paste the studio write key"}
-                        value={settingsDraft.deployKey}
-                        onChange={(event) => setSettingsDraft((current) => ({ ...current, deployKey: event.target.value }))}
+                        placeholder={savedDraftEnvironmentSettings.deployKeyConfigured && !clearDeployKey ? "Saved locally. Enter a new key to replace it." : `Paste the ${draftEnvironmentLabel.toLowerCase()} studio write key`}
+                        value={activeDraftEnvironmentSettings.deployKey}
+                        onChange={(event) => updateEnvironmentDeployKey(draftEnvironment, event.target.value)}
                       />
                     </div>
 
                     <div className="flex items-end">
-                      <Button type="button" variant="outline" onClick={() => setClearDeployKey((current) => !current)}>
+                      <Button
+                        type="button"
+                        variant="outline"
+                        onClick={() => setClearDeployKeys((current) => ({ ...current, [draftEnvironment]: !current[draftEnvironment] }))}
+                      >
                         {clearDeployKey ? "Keep saved key" : "Clear saved key"}
                       </Button>
                     </div>
@@ -683,7 +787,7 @@ export function StudioShell({ studio, settings, initialStatus, onBootstrapChange
 
                   <div className="grid gap-3 rounded-[1.8rem] p-5 glass-subtle">
                     <p className="text-sm leading-7 text-muted-foreground">
-                      Desktop settings are stored under <code>{status.userDataDir}</code>. The studio write key stays local to this installation, while Convex remains the shared content source across machines.
+                      Desktop settings are stored under <code>{status.userDataDir}</code>. Each environment keeps its own studio write key locally, while Convex remains the shared content source across machines.
                     </p>
                     <p className="text-sm leading-7 text-muted-foreground">
                       Cached bookmark thumbnails are mirrored into <code>{status.thumbnailsDir}</code> so the app never needs a writable copy of the repo.

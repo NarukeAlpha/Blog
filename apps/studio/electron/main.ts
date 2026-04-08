@@ -3,7 +3,7 @@ import { fileURLToPath } from "node:url";
 
 import { app, BrowserWindow, ipcMain, shell } from "electron";
 
-import { getPublicSiteCounts, getPublicSiteUrl, getSiteOverview, hasDeployKey, isConvexConfigured, isConvexReachable } from "../lib/convex";
+import { getActiveStudioConnection, getPublicSiteCounts, getSiteOverview, hasDeployKey, isConvexConfigured, isConvexReachable } from "../lib/convex";
 import { loadWorkspaceEnv } from "../lib/env";
 import { isOpencodeConfigured, isOpencodeHealthy, shutdownOpencodeServer } from "../lib/opencode";
 import { getStudioPaths } from "../lib/paths";
@@ -20,6 +20,7 @@ let mainWindow: BrowserWindow | null = null;
 
 async function getStatusPayload() {
   const { appPath, thumbnailsDir, userDataDir } = getStudioPaths();
+  const activeConnection = await getActiveStudioConnection();
   const opencodeReady = await isOpencodeHealthy();
   const opencodeConfigured = await isOpencodeConfigured();
   const convexConfigured = await isConvexConfigured();
@@ -63,10 +64,13 @@ async function getStatusPayload() {
   }
 
   return {
+    activeEnvironment: activeConnection.environment,
     appPath,
     userDataDir,
     thumbnailsDir,
-    publicSiteUrl: (await getPublicSiteUrl()) || null,
+    convexUrl: activeConnection.convexUrl || null,
+    convexSiteUrl: activeConnection.convexSiteUrl || null,
+    publicSiteUrl: activeConnection.publicSiteUrl || null,
     convexConfigured,
     convexReachable,
     deployKeyConfigured,
