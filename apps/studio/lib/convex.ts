@@ -18,7 +18,7 @@ let client: ConvexHttpClient | null = null;
 let clientUrl = "";
 
 function isRecord(value: unknown): value is Record<string, unknown> {
-  return Boolean(value) && typeof value === "object";
+  return Boolean(value) && typeof value === "object" && !Array.isArray(value);
 }
 
 function readRequiredString(value: Record<string, unknown>, key: string, context: string) {

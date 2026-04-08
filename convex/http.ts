@@ -26,7 +26,7 @@ function errorResponse(error: unknown, fallback: string) {
 }
 
 function isRecord(value: unknown): value is Record<string, unknown> {
-  return Boolean(value) && typeof value === "object";
+  return Boolean(value) && typeof value === "object" && !Array.isArray(value);
 }
 
 function requireStudioRequestAuth(request: Request) {
@@ -99,17 +99,12 @@ async function parseBookmarkPublishRequest(request: Request): Promise<StudioBook
   };
 }
 
-function authorizeStudioRequest(request: Request) {
-  requireStudioRequestAuth(request);
-
-}
-
 http.route({
   path: "/studio/overview",
   method: "POST",
   handler: httpAction(async (ctx, request) => {
     try {
-      authorizeStudioRequest(request);
+      requireStudioRequestAuth(request);
       return json(await ctx.runQuery(internal.site.overview, {}));
     } catch (error) {
       return errorResponse(error, "Studio overview failed.");
