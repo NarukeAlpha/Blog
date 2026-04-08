@@ -18,17 +18,16 @@ const NON_ELECTRON_USER_DATA_DIR = path.join(os.tmpdir(), "narukealpha-post-stud
 
 function getElectronApp() {
   try {
-    const electronModule = require("electron") as {
-      app?: {
-        getAppPath: () => string;
-        getPath: (name: "userData") => string;
-      };
-    };
+    const electron = require("electron") as typeof import("electron") | string;
 
-    return electronModule.app ?? null;
+    if (electron && typeof electron === "object" && "app" in electron) {
+      return electron.app;
+    }
   } catch {
-    return null;
+    // noop
   }
+
+  return null;
 }
 
 export function getStudioPaths() {

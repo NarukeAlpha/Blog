@@ -65,18 +65,16 @@ const STUDIO_ENVIRONMENTS: StudioEnvironment[] = ["dev", "prod"];
 
 function getSafeStorage() {
   try {
-    const electronModule = require("electron") as {
-      safeStorage?: {
-        isEncryptionAvailable: () => boolean;
-        encryptString: (value: string) => Buffer;
-        decryptString: (value: Buffer) => string;
-      };
-    };
+    const electron = require("electron") as typeof import("electron") | string;
 
-    return electronModule.safeStorage ?? null;
+    if (electron && typeof electron === "object" && "safeStorage" in electron) {
+      return electron.safeStorage;
+    }
   } catch {
-    return null;
+    // noop
   }
+
+  return null;
 }
 
 function isRecord(value: unknown): value is Record<string, unknown> {
@@ -250,7 +248,14 @@ function decodeStoredDeployKey(stored: StoredStudioSettings, environment: Studio
 
 function toRuntimeSettings(stored: StoredStudioSettings): StudioRuntimeSettings {
   const defaults = getEnvironmentDefaults();
-  const hasLegacyProductionSettings = Boolean(stored.convexUrl || stored.publicSiteUrl || stored.encryptedDeployKey || stored.plaintextDeployKey || stored.encryptedWriteKey || stored.plaintextWriteKey);
+  const hasLegacyProductionSettings = Boolean(
+    stored.convexUrl
+    || stored.publicSiteUrl
+    || stored.encryptedDeployKey
+    || stored.plaintextDeployKey
+    || stored.encryptedWriteKey
+    || stored.plaintextWriteKey
+  );
 
   return {
     selectedEnvironment: normalizeEnvironment(stored.selectedEnvironment) || (hasLegacyProductionSettings ? "prod" : defaults.selectedEnvironment),
