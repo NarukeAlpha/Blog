@@ -5,18 +5,41 @@ import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 
 import { api } from "@convex/_generated/api";
-import type { PostRecord, PublicBookmarkRecord } from "@shared/types";
+import type { AiResearchSummaryRecord, PostRecord, PublicBookmarkRecord } from "@shared/types";
 import { formatDate } from "@shared/text";
 import "./public-site.css";
 
-function useActiveSlug(slugs: string[]) {
+type ContentTab = "journal" | "research" | "bookmarks";
+
+function parseHash() {
+  const normalizedHash = window.location.hash.replace(/^#/, "");
+
+  if (normalizedHash.startsWith("research/")) {
+    return { tab: "research" as const, slug: normalizedHash.slice("research/".length) || null };
+  }
+
+  if (normalizedHash === "bookmarks") {
+    return { tab: "bookmarks" as const, slug: null };
+  }
+
+  if (normalizedHash.startsWith("post/")) {
+    return { tab: "journal" as const, slug: normalizedHash.slice("post/".length) || null };
+  }
+
+  return { tab: "journal" as const, slug: null };
+}
+
+function useActiveSlug(slugs: string[], hashPrefix: "post" | "research") {
   const [activeSlug, setActiveSlug] = useState<string | null>(null);
 
   useEffect(() => {
     const syncFromHash = () => {
       const normalizedHash = window.location.hash.replace(/^#/, "");
-      const hashSlug = normalizedHash.startsWith("post/") ? normalizedHash.slice(5) : normalizedHash;
-      setActiveSlug(hashSlug || null);
+      const hashSlug = normalizedHash.startsWith(`${hashPrefix}/`) ? normalizedHash.slice(hashPrefix.length + 1) : null;
+
+      if (hashSlug !== null) {
+        setActiveSlug(hashSlug || null);
+      }
     };
 
     syncFromHash();
@@ -25,7 +48,7 @@ function useActiveSlug(slugs: string[]) {
     return () => {
       window.removeEventListener("hashchange", syncFromHash);
     };
-  }, []);
+  }, [hashPrefix]);
 
   useEffect(() => {
     if (!slugs.length) {
@@ -35,24 +58,62 @@ function useActiveSlug(slugs: string[]) {
 
     if (!activeSlug || !slugs.includes(activeSlug)) {
       setActiveSlug(slugs[0]);
-      window.history.replaceState(null, "", `#post/${slugs[0]}`);
     }
   }, [activeSlug, slugs]);
 
   return [activeSlug, setActiveSlug] as const;
 }
 
-type ContentTab = "journal" | "bookmarks";
-
 export function PublicSite() {
   const posts: PostRecord[] = useQuery(api.public.listPosts, {}) ?? [];
+  const aiResearchEntries: AiResearchSummaryRecord[] = useQuery(api.public.listAiResearch, {}) ?? [];
   const bookmarks: PublicBookmarkRecord[] = useQuery(api.public.listBookmarks, {}) ?? [];
-  const [activeSlug, setActiveSlug] = useActiveSlug(posts.map((post) => post.slug));
-  const activePost = useMemo(() => posts.find((post) => post.slug === activeSlug) ?? posts[0] ?? null, [activeSlug, posts]);
+  const [activePostSlug, setActivePostSlug] = useActiveSlug(posts.map((post) => post.slug), "post");
+  const [activeAiResearchSlug, setActiveAiResearchSlug] = useActiveSlug(aiResearchEntries.map((entry) => entry.slug), "research");
+  const activePost = useMemo(() => posts.find((post) => post.slug === activePostSlug) ?? posts[0] ?? null, [activePostSlug, posts]);
+  const activeAiResearchSummary = useMemo(
+    () => aiResearchEntries.find((entry) => entry.slug === activeAiResearchSlug) ?? aiResearchEntries[0] ?? null,
+    [activeAiResearchSlug, aiResearchEntries]
+  );
+  const activeAiResearch = useQuery(
+    api.public.getAiResearchBySlug,
+    activeAiResearchSlug ? { slug: activeAiResearchSlug } : "skip"
+  );
+  const isAiResearchLoading = activeAiResearchSlug !== null && activeAiResearch === undefined;
+  const isAiResearchMissing = activeAiResearchSlug !== null && activeAiResearch === null;
   const highlightedBookmarks = bookmarks.slice(0, 4);
   const latest = posts[0] ?? null;
 
-  const [activeTab, setActiveTab] = useState<ContentTab>("journal");
+  const [activeTab, setActiveTab] = useState<ContentTab>(() => parseHash().tab);
+
+  useEffect(() => {
+    const syncTabFromHash = () => {
+      setActiveTab(parseHash().tab);
+    };
+
+    syncTabFromHash();
+    window.addEventListener("hashchange", syncTabFromHash);
+
+    return () => {
+      window.removeEventListener("hashchange", syncTabFromHash);
+    };
+  }, []);
+
+  useEffect(() => {
+    if (activeTab === "journal" && activePostSlug) {
+      window.history.replaceState(null, "", `#post/${activePostSlug}`);
+      return;
+    }
+
+    if (activeTab === "research" && activeAiResearchSlug) {
+      window.history.replaceState(null, "", `#research/${activeAiResearchSlug}`);
+      return;
+    }
+
+    if (activeTab === "bookmarks") {
+      window.history.replaceState(null, "", "#bookmarks");
+    }
+  }, [activeAiResearchSlug, activePostSlug, activeTab]);
 
   return (
     <div className="site-shell pub-shell">
@@ -95,9 +156,10 @@ export function PublicSite() {
 
           <div className="pub-reveal pub-reveal-1 pub-stats">
             <span><strong className="pub-stat-value pub-stat-value--purple">{posts.length}</strong> posts</span>
-            <span><strong className="pub-stat-value pub-stat-value--cyan">{bookmarks.length}</strong> bookmarks</span>
+            <span><strong className="pub-stat-value pub-stat-value--cyan">{aiResearchEntries.length}</strong> research files</span>
+            <span><strong className="pub-stat-value pub-stat-value--amber">{bookmarks.length}</strong> bookmarks</span>
             <span>
-              <strong className="pub-stat-value pub-stat-value--amber">
+              <strong className="pub-stat-value pub-stat-value--purple">
                 {latest ? formatDate(latest.publishedAt) : "—"}
               </strong>{" "}
               latest
@@ -114,6 +176,13 @@ export function PublicSite() {
               className={`pub-content-tab ${activeTab === "journal" ? "pub-content-tab--active" : ""}`}
             >
               <span className="pub-label-icon--cyan">▸</span> journal entries
+            </button>
+            <button
+              type="button"
+              onClick={() => setActiveTab("research")}
+              className={`pub-content-tab ${activeTab === "research" ? "pub-content-tab--active" : ""}`}
+            >
+              <span className="pub-label-icon--purple">◈</span> ai research
             </button>
             <button
               type="button"
@@ -137,8 +206,8 @@ export function PublicSite() {
                         key={post.slug}
                         type="button"
                         onClick={() => {
-                          setActiveSlug(post.slug);
-                          window.history.replaceState(null, "", `#post/${post.slug}`);
+                          setActivePostSlug(post.slug);
+                          setActiveTab("journal");
                         }}
                         className={`pub-nav-tab ${isActive ? "pub-nav-tab--active" : ""}`}
                       >
@@ -172,6 +241,63 @@ export function PublicSite() {
                   </>
                 ) : (
                   <p className="pub-article-empty">Waiting for the first post to land…</p>
+                )}
+              </article>
+            </div>
+          )}
+
+          {/* ── AI RESEARCH TAB ── */}
+          {activeTab === "research" && (
+            <div className="pub-tab-body">
+              <div className="pub-nav-scroll">
+                {aiResearchEntries.length ? (
+                  aiResearchEntries.map((entry) => {
+                    const isActive = entry.slug === activeAiResearchSummary?.slug;
+                    return (
+                      <button
+                        key={entry.slug}
+                        type="button"
+                        onClick={() => {
+                          setActiveAiResearchSlug(entry.slug);
+                          setActiveTab("research");
+                        }}
+                        className={`pub-nav-tab ${isActive ? "pub-nav-tab--active" : ""}`}
+                      >
+                        {entry.title}
+                        <span className={`pub-tab-time ${isActive ? "pub-tab-time--active" : ""}`}>
+                          {entry.readingTimeMinutes}m
+                        </span>
+                      </button>
+                    );
+                  })
+                ) : (
+                  <span className="pub-empty-text">No AI research files yet.</span>
+                )}
+              </div>
+
+              <article className="pub-article" id="research">
+                {activeAiResearch !== undefined && activeAiResearch !== null ? (
+                  <>
+                    <div className="pub-article-header">
+                      <p className="pub-article-meta">
+                        {formatDate(activeAiResearch.publishedAt)} · {activeAiResearch.readingTimeMinutes} min read · {activeAiResearch.model}
+                      </p>
+                      <h2 className="pub-article-title">{activeAiResearch.title}</h2>
+                    </div>
+                    <section className="pub-research-prompt">
+                      <p className="pub-research-prompt-label">Prompt</p>
+                      <p className="pub-research-prompt-body">{activeAiResearch.prompt}</p>
+                    </section>
+                    <div className="ink-prose pub-article-body">
+                      <ReactMarkdown remarkPlugins={[remarkGfm]}>{activeAiResearch.body}</ReactMarkdown>
+                    </div>
+                  </>
+                ) : isAiResearchLoading ? (
+                  <p className="pub-article-empty">Loading AI research file...</p>
+                ) : isAiResearchMissing ? (
+                  <p className="pub-article-empty">AI research file not found.</p>
+                ) : (
+                  <p className="pub-article-empty">Waiting for the first AI research file to land...</p>
                 )}
               </article>
             </div>
