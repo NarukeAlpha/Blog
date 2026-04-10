@@ -1,6 +1,6 @@
 import { spawn, type ChildProcess } from "node:child_process";
 
-import { createOpencodeClient, type Part } from "@opencode-ai/sdk/v2";
+import { createOpencodeClient, type Part } from "@opencode-ai/sdk/v2/client";
 
 import { DEFAULT_OPENCODE_BASE_URL, getStudioPaths } from "./paths";
 import { getStudioRuntimeSettings } from "./settings";
