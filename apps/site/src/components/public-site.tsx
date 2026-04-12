@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { useQuery } from "convex/react";
-import { ArrowUpRight, BookOpen, Brain, Bookmark } from "lucide-react";
+import { ArrowUpRight, BookOpen, Bookmark, Brain, Github } from "lucide-react";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 
@@ -225,6 +225,33 @@ export function PublicSite() {
                       : "No AI research files yet."}
                 </span>
                   )}
+                </div>
+            )}
+            
+            {!sidebarCollapsed && (
+                <div className="pub-sidebar-stats">
+                  <a
+                      href="https://github.com/NarukeAlpha"
+                      target="_blank"
+                      rel="noreferrer"
+                      className="pub-sidebar-item"
+                      style={{ textDecoration: "none" }}
+                  >
+                    <span className="pub-sidebar-item-label" style={{ display: "flex", alignItems: "center", gap: "0.5rem" }}>
+                      <Github size={14} className="pub-sidebar-tab-icon" />
+                      <span
+                          style={{
+                            background: "linear-gradient(135deg, #fff 0%, #c4b5fd 50%, #00d2e6 100%)",
+                            WebkitBackgroundClip: "text",
+                            WebkitTextFillColor: "transparent",
+                            backgroundClip: "text",
+                          }}
+                      >
+                        github.com/NarukeAlpha
+                      </span>
+                    </span>
+                    <span className="pub-sidebar-item-meta">open</span>
+                  </a>
                 </div>
             )}
 
