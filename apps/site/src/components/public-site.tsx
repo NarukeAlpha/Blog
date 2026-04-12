@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { useQuery } from "convex/react";
-import { ArrowUpRight, BookOpen, Bookmark, Brain, Github } from "lucide-react";
+import { ArrowUpRight, BookOpen, Bookmark, Brain, Github, Menu } from "lucide-react";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 
@@ -86,6 +86,7 @@ export function PublicSite() {
 
   const [activeTab, setActiveTab] = useState<ContentTab>(() => parseHash().tab);
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
+  const [mobileOpen, setMobileOpen] = useState(false);
 
   useEffect(() => {
     const syncTabFromHash = () => {
@@ -128,6 +129,7 @@ export function PublicSite() {
     } else if (activeTab === "research") {
       setActiveAiResearchSlug(key);
     }
+    setMobileOpen(false);
   };
 
   return (
@@ -157,16 +159,36 @@ export function PublicSite() {
           ))}
         </div>
 
+        {/* ── Mobile menu button ── */}
+        <button
+            type="button"
+            className="pub-mobile-menu-btn"
+            onClick={() => setMobileOpen(true)}
+            aria-label="Open menu"
+        >
+          <Menu size={22} />
+        </button>
+
         {/* ═══════════════ LAYOUT: SIDEBAR + MAIN ═══════════════ */}
         <div className="pub-layout">
+          {/* ── Mobile overlay ── */}
+          {mobileOpen && (
+              <div
+                  className="pub-mobile-overlay"
+                  onClick={() => setMobileOpen(false)}
+              />
+          )}
           {/* ── SIDEBAR ── */}
-          <aside className={`pub-sidebar ${sidebarCollapsed ? "pub-sidebar--collapsed" : ""}`}>
+          <aside className={`pub-sidebar ${sidebarCollapsed ? "pub-sidebar--collapsed" : ""} ${mobileOpen ? "pub-sidebar--mobile-open" : ""}`}>
             <div className="pub-sidebar-header">
               <h2 className="pub-sidebar-brand">Naruke Alpha</h2>
               <button
                   type="button"
                   className="pub-sidebar-toggle"
-                  onClick={() => setSidebarCollapsed(!sidebarCollapsed)}
+                  onClick={() => {
+                    setSidebarCollapsed(!sidebarCollapsed);
+                    if (!sidebarCollapsed) setMobileOpen(false);
+                  }}
                   aria-label={sidebarCollapsed ? "Expand sidebar" : "Collapse sidebar"}
               >
                 {sidebarCollapsed ? "▸" : "◂"}
