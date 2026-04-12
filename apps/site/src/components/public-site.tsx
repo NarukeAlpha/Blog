@@ -251,7 +251,7 @@ export function PublicSite() {
             )}
             
             {!sidebarCollapsed && (
-                <div className="pub-sidebar-stats">
+                <div className="pub-sidebar-github">
                   <a
                       href="https://github.com/NarukeAlpha"
                       target="_blank"

@@ -161,7 +161,11 @@ test("electron main registers IPC handlers and guards external windows", async (
 
   const appHandlers = new Map(appOn.mock.calls.map(([event, callback]) => [event, callback]));
   (appHandlers.get("window-all-closed") as (() => void) | undefined)?.();
-  expect(quit).not.toHaveBeenCalled();
+  if (process.platform === "darwin") {
+    expect(quit).not.toHaveBeenCalled();
+  } else {
+    expect(quit).toHaveBeenCalledTimes(1);
+  }
 
   (appHandlers.get("will-quit") as (() => void) | undefined)?.();
   expect(shutdownOpencodeServer).toHaveBeenCalledTimes(1);

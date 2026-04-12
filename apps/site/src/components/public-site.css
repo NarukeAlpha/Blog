@@ -338,13 +338,20 @@
     color: #00d2e6;
 }
 
+/* ── Sidebar footer ── */
+
+.pub-sidebar-github {
+    margin-top: auto;
+    padding-top: 1rem;
+    border-top: 1px solid rgba(120, 80, 255, 0.1);
+}
+
 /* ── Sidebar stats (bottom) ── */
 
 .pub-sidebar-stats {
     display: flex;
     justify-content: space-around;
     padding-top: 1rem;
-    margin-top: auto;
     border-top: 1px solid rgba(120, 80, 255, 0.1);
 }
 
