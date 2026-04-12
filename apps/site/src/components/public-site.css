@@ -43,33 +43,32 @@
 /* ── Shell — force consistent scrollbar to prevent layout shift ── */
 
 .pub-shell {
-    min-height: 100vh;
+    height: 100vh;
     position: relative;
-    overflow-y: scroll;
-    overflow-x: hidden;
+    overflow: hidden;
 }
 
 /* ── Custom themed scrollbar (hide default, show themed) ── */
 
-.pub-shell::-webkit-scrollbar {
+.pub-content-section::-webkit-scrollbar {
     width: 6px;
 }
 
-.pub-shell::-webkit-scrollbar-track {
+.pub-content-section::-webkit-scrollbar-track {
     background: transparent;
 }
 
-.pub-shell::-webkit-scrollbar-thumb {
+.pub-content-section::-webkit-scrollbar-thumb {
     background: rgba(120, 80, 255, 0.25);
     border-radius: 3px;
 }
 
-.pub-shell::-webkit-scrollbar-thumb:hover {
+.pub-content-section::-webkit-scrollbar-thumb:hover {
     background: rgba(120, 80, 255, 0.45);
 }
 
 /* Firefox custom scrollbar */
-.pub-shell {
+.pub-content-section {
     scrollbar-width: thin;
     scrollbar-color: rgba(120, 80, 255, 0.25) transparent;
 }
@@ -97,15 +96,14 @@
     position: relative;
     z-index: 10;
     display: flex;
-    min-height: 100vh;
+    height: 100%;
 }
 
 /* ── Sidebar ── */
 
 .pub-sidebar {
-    position: sticky;
-    top: 0;
-    height: 100vh;
+    flex-shrink: 0;
+    height: 100%;
     width: 260px;
     min-width: 260px;
     display: flex;
@@ -374,23 +372,25 @@
     min-width: 0;
     max-width: 900px;
     margin: 0 auto;
-    padding: 3rem 2rem;
+    padding: 1.5rem 2rem;
     display: flex;
     flex-direction: column;
-    gap: 3.5rem;
+    gap: 1.5rem;
+    overflow: hidden;
 }
 
 /* ── Hero / Header ── */
 
 .pub-hero {
     text-align: center;
-    padding-top: 2rem;
+    flex-shrink: 0;
+    padding-top: 0.5rem;
 }
 
 .pub-hero-ring {
-    width: 120px;
-    height: 120px;
-    margin: 0 auto 1.5rem;
+    width: 90px;
+    height: 90px;
+    margin: 0 auto 1rem;
     border-radius: 50%;
     border: 2px solid #7850ff;
     display: flex;
@@ -437,7 +437,7 @@
 
 .pub-divider {
     height: 1px;
-    margin: 1.6rem auto 0;
+    margin: 0.8rem auto 0;
     max-width: 260px;
     background: linear-gradient(90deg, transparent, #7850ff, #00d2e6, transparent);
     opacity: 0.45;
@@ -450,8 +450,8 @@
     display: flex;
     flex-wrap: wrap;
     justify-content: center;
-    gap: 2.5rem;
-    margin-top: 1.5rem;
+    gap: 1.5rem;
+    margin-top: 0.75rem;
     font-family: "JetBrains Mono", monospace;
     font-size: .7rem;
     letter-spacing: .15em;
@@ -490,7 +490,9 @@
 /* ── Content section ── */
 
 .pub-content-section {
-    min-height: 50vh;
+    flex: 1;
+    min-height: 0;
+    overflow-y: auto;
 }
 
 /* ── Content tab bar (removed — replaced by sidebar) ── */
@@ -499,6 +501,7 @@
     display: flex;
     flex-direction: column;
     gap: 1.5rem;
+    height: 100%;
 }
 
 /* ── Post navigation (horizontal scrolling tabs — removed, now in sidebar) ── */
@@ -752,12 +755,13 @@
 
 .pub-footer {
     text-align: center;
+    flex-shrink: 0;
     font-family: "JetBrains Mono", monospace;
     font-size: .6rem;
     letter-spacing: .18em;
     text-transform: uppercase;
     color: rgba(200, 210, 230, .22);
-    padding-bottom: 2rem;
+    padding-bottom: 1rem;
 }
 
 /* ═══════════════ Responsive ═══════════════ */
