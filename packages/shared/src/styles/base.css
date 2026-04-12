@@ -60,9 +60,7 @@
     position: fixed;
     inset: 0;
     z-index: -2;
-    background:
-      url("../assets/stardustbg.png") top right / cover no-repeat fixed;
-    background-attachment: fixed;
+    background: url("../assets/stardustbg.png") no-repeat fixed top right;
     opacity: 0.55;
     animation: stardust-drift 60s linear infinite;
   }
