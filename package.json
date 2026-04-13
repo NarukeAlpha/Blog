@@ -15,6 +15,7 @@
     "dev:studio:renderer": "vite --config apps/studio/vite.config.ts",
     "dev:studio:electron": "wait-on tcp:127.0.0.1:5174 && npm run build:studio:electron && cross-env ELECTRON_RENDERER_URL=http://127.0.0.1:5174 electron .",
     "dev:convex": "convex dev --local",
+    "convex:fullsync": "convex dev --once && convex deploy -y",
     "build": "npm run build:site && npm run build:studio",
     "build:web": "npm run build:site",
     "build:site": "vite build --config apps/site/vite.config.ts",
