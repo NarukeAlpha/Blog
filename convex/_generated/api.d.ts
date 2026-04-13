@@ -8,6 +8,7 @@
  * @module
  */
 
+import type * as aiResearch from "../aiResearch.js";
 import type * as api_ from "../api.js";
 import type * as bookmarkInternals from "../bookmarkInternals.js";
 import type * as bookmarks from "../bookmarks.js";
@@ -25,6 +26,7 @@ import type {
 } from "convex/server";
 
 declare const fullApi: ApiFromModules<{
+  aiResearch: typeof aiResearch;
   api: typeof api_;
   bookmarkInternals: typeof bookmarkInternals;
   bookmarks: typeof bookmarks;

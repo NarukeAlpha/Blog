@@ -15,6 +15,7 @@ vi.mock("../convex/_generated/api", () => ({
   internal: {
     site: { overview: "site.overview" },
     posts: { publish: "posts.publish" },
+    aiResearch: { publish: "aiResearch.publish" },
     bookmarks: { publish: "bookmarks.publish" }
   }
 }));
@@ -34,7 +35,7 @@ test("studio HTTP routes register and enforce the write key", async () => {
 
   await import("../convex/http");
 
-  expect(route).toHaveBeenCalledTimes(3);
+  expect(route).toHaveBeenCalledTimes(4);
   const routes = route.mock.calls.map(([entry]) => entry as {
     path: string;
     method: string;
@@ -42,9 +43,11 @@ test("studio HTTP routes register and enforce the write key", async () => {
   });
   const overviewRoute = routes.find((entry) => entry.path === "/studio/overview");
   const postRoute = routes.find((entry) => entry.path === "/studio/posts");
+  const aiResearchRoute = routes.find((entry) => entry.path === "/studio/ai-research");
 
   expect(overviewRoute?.method).toBe("POST");
   expect(postRoute?.method).toBe("POST");
+  expect(aiResearchRoute?.method).toBe("POST");
 
   const overviewResponse = await overviewRoute?.handler(
     {
@@ -77,6 +80,48 @@ test("studio HTTP routes register and enforce the write key", async () => {
 
   expect(deniedResponse?.status).toBe(401);
   await expect(deniedResponse?.json()).resolves.toEqual({ error: "Invalid studio write key." });
+});
+
+test("studio AI research route parses request bodies and calls the publish mutation", async () => {
+  vi.resetModules();
+  route.mockClear();
+  requireStudioWriteKey.mockClear();
+
+  await import("../convex/http");
+
+  const routes = route.mock.calls.map(([entry]) => entry as {
+    path: string;
+    handler: (ctx: Record<string, unknown>, request: Request) => Promise<Response>;
+  });
+  const aiResearchRoute = routes.find((entry) => entry.path === "/studio/ai-research");
+  const runMutation = vi.fn(async () => ({ slug: "ship-log", title: "Ship Log" }));
+
+  const response = await aiResearchRoute?.handler(
+    {
+      runMutation
+    },
+    new Request("https://example.com/studio/ai-research", {
+      method: "POST",
+      headers: {
+        "x-studio-write-key": "secret"
+      },
+      body: JSON.stringify({
+        title: "Ship Log",
+        body: "Body",
+        model: "gpt-5.4",
+        prompt: "Write the memo"
+      })
+    })
+  );
+
+  expect(runMutation).toHaveBeenCalledWith("aiResearch.publish", {
+    title: "Ship Log",
+    body: "Body",
+    model: "gpt-5.4",
+    prompt: "Write the memo"
+  });
+  expect(response?.status).toBe(200);
+  await expect(response?.json()).resolves.toEqual({ slug: "ship-log", title: "Ship Log" });
 });
 
 test("studio HTTP routes reject invalid JSON request bodies", async () => {

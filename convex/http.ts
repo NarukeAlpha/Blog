@@ -1,5 +1,5 @@
 import { httpRouter } from "convex/server";
-import type { PostPublishPayload, StudioBookmarkPublishRequest, StudioErrorResponse } from "../packages/shared/src/types";
+import type { AiResearchPublishPayload, PostPublishPayload, StudioBookmarkPublishRequest, StudioErrorResponse } from "../packages/shared/src/types";
 
 import { internal } from "./_generated/api";
 import { httpAction } from "./_generated/server";
@@ -81,6 +81,22 @@ async function parsePostPublishRequest(request: Request): Promise<PostPublishPay
   };
 }
 
+async function parseAiResearchPublishRequest(request: Request): Promise<AiResearchPublishPayload> {
+  requireStudioRequestAuth(request);
+  const body = await parseStudioJsonBody(request);
+
+  if (!isRecord(body)) {
+    throw new Error("Studio AI research publish body must be a JSON object.");
+  }
+
+  return {
+    title: readRequiredStringField(body, "title", "Studio AI research publish"),
+    body: readRequiredStringField(body, "body", "Studio AI research publish"),
+    model: readRequiredStringField(body, "model", "Studio AI research publish"),
+    prompt: readRequiredStringField(body, "prompt", "Studio AI research publish")
+  };
+}
+
 async function parseBookmarkPublishRequest(request: Request): Promise<StudioBookmarkPublishRequest> {
   requireStudioRequestAuth(request);
   const body = await parseStudioJsonBody(request);
@@ -127,6 +143,27 @@ http.route({
       );
     } catch (error) {
       return errorResponse(error, "Studio post publish failed.");
+    }
+  })
+});
+
+http.route({
+  path: "/studio/ai-research",
+  method: "POST",
+  handler: httpAction(async (ctx, request) => {
+    try {
+      const body = await parseAiResearchPublishRequest(request);
+
+      return json(
+        await ctx.runMutation(internal.aiResearch.publish, {
+          title: body.title,
+          body: body.body,
+          model: body.model,
+          prompt: body.prompt
+        })
+      );
+    } catch (error) {
+      return errorResponse(error, "Studio AI research publish failed.");
     }
   })
 });

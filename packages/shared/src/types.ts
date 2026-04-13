@@ -116,6 +116,13 @@ export interface PostPublishPayload {
   body: string;
 }
 
+export interface AiResearchPublishPayload {
+  title: string;
+  body: string;
+  model: string;
+  prompt: string;
+}
+
 export interface BookmarkPublishPayload {
   url: string;
   note: string;
