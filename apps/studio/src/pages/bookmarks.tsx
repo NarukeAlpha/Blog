@@ -79,7 +79,7 @@ export function BookmarksPage() {
   }, [canPublish, url, note, isBusy, bridge, status.opencodeConfigured, refreshStatus]);
 
   return (
-    <div className="mx-auto max-w-2xl space-y-6 fade-up">
+    <div className="mx-auto w-full max-w-4xl space-y-6 fade-up">
       <div>
         <h2 className="text-2xl font-semibold text-foreground">New Bookmark</h2>
         <p className="mt-1 text-sm text-muted-foreground">Save a link with AI-enriched metadata.</p>
@@ -93,7 +93,7 @@ export function BookmarksPage() {
         </div>
       ) : null}
 
-      <form onSubmit={(e) => void handleSubmit(e)} className="space-y-3">
+      <form onSubmit={(e) => void handleSubmit(e)} className="space-y-4 rounded-xl border border-border bg-muted/15 p-5">
         <Input
           type="url"
           placeholder="https://example.com/article"
@@ -104,14 +104,17 @@ export function BookmarksPage() {
         />
         <Textarea
           placeholder="Why this link matters (optional)"
-          rows={3}
+          rows={6}
+          className="min-h-[180px]"
           value={note}
           onChange={(e) => setNote(e.target.value)}
           disabled={isBusy}
         />
-        <Button type="submit" disabled={isBusy || !canPublish}>
-          {isBusy ? "Publishing..." : "Publish Bookmark"}
-        </Button>
+        <div className="flex justify-end">
+          <Button type="submit" disabled={isBusy || !canPublish}>
+            {isBusy ? "Publishing..." : "Publish Bookmark"}
+          </Button>
+        </div>
       </form>
 
       {steps.length > 0 && (

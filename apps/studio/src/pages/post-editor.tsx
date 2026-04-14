@@ -84,24 +84,25 @@ export function PostEditorPage() {
   }, [canPublish, draft, execute]);
 
   return (
-    <div className="flex h-full flex-col gap-4 fade-up">
-      <div>
+    <div className="flex min-h-0 flex-1 flex-col gap-4 fade-up">
+      <div className="shrink-0">
         <h2 className="text-2xl font-semibold text-foreground">New Post</h2>
         <p className="mt-1 text-sm text-muted-foreground">Write in Markdown. Draft auto-saves every 10 seconds.</p>
       </div>
 
       {!canPublish ? (
-        <div className="rounded-xl border border-warning/20 bg-warning/8 p-3 text-sm text-warning">
+        <div className="shrink-0 rounded-xl border border-warning/20 bg-warning/8 p-3 text-sm text-warning">
           Save a {envLabel} Convex URL and studio write key in Settings before publishing.
         </div>
       ) : null}
 
-      <form onSubmit={handleSubmit} className="flex flex-1 flex-col gap-3 overflow-hidden">
+      <form onSubmit={handleSubmit} className="flex min-h-0 flex-1 flex-col gap-3 overflow-hidden">
         <Input
           placeholder="Post title"
           value={draft.title}
           onChange={(e) => setDraft((d) => ({ ...d, title: e.target.value }))}
           required
+          className="shrink-0"
         />
 
         <MarkdownEditor
@@ -109,7 +110,7 @@ export function PostEditorPage() {
           onChange={(body) => setDraft((d) => ({ ...d, body }))}
         />
 
-        <div className="flex items-center justify-between gap-3 border-t border-border pt-3">
+        <div className="flex shrink-0 items-center justify-between gap-3 border-t border-border pt-3">
           <p className="text-xs text-muted-foreground">⌘↵ to publish</p>
           <Button type="submit" disabled={isBusy || !canPublish}>
             {isBusy ? "Publishing..." : "Publish to Convex"}

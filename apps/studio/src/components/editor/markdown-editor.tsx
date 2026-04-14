@@ -31,14 +31,17 @@ export function MarkdownEditor({ value, onChange }: MarkdownEditorProps) {
   }, [value, onChange]);
 
   return (
-    <div className="flex flex-1 flex-col gap-2 overflow-hidden">
-      <div className="flex items-center justify-between gap-3">
+    <div className="flex min-h-0 flex-1 flex-col gap-2 overflow-hidden">
+      <div className="flex shrink-0 items-center justify-between gap-3">
         <Toolbar onInsert={handleInsert} />
         <WordCount text={value} />
       </div>
 
-      <PanelGroup orientation="horizontal" className="flex-1 overflow-hidden rounded-xl border border-border">
-        <Panel defaultSize={50} minSize={30}>
+      <PanelGroup
+        orientation="horizontal"
+        className="flex min-h-[480px] flex-1 overflow-hidden rounded-xl border border-border"
+      >
+        <Panel defaultSize={60} minSize={35} className="min-w-0">
           <textarea
             ref={textareaRef}
             className="h-full w-full resize-none bg-transparent p-4 font-mono text-sm text-foreground placeholder:text-muted-foreground focus:outline-none"
@@ -48,7 +51,7 @@ export function MarkdownEditor({ value, onChange }: MarkdownEditorProps) {
           />
         </Panel>
         <PanelResizeHandle className="w-px bg-border hover:bg-accent/40 transition-colors" />
-        <Panel defaultSize={50} minSize={25}>
+        <Panel defaultSize={40} minSize={20} className="min-w-0">
           <div className="h-full overflow-y-auto border-l border-border bg-muted/20 p-4">
             {value.trim() ? (
               <div className="ink-prose text-sm">
