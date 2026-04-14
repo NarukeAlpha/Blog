@@ -35,7 +35,7 @@ test("studio HTTP routes register and enforce the write key", async () => {
 
   await import("../convex/http");
 
-  expect(route).toHaveBeenCalledTimes(4);
+  expect(route).toHaveBeenCalledTimes(5);
   const routes = route.mock.calls.map(([entry]) => entry as {
     path: string;
     method: string;
@@ -44,10 +44,12 @@ test("studio HTTP routes register and enforce the write key", async () => {
   const overviewRoute = routes.find((entry) => entry.path === "/studio/overview");
   const postRoute = routes.find((entry) => entry.path === "/studio/posts");
   const aiResearchRoute = routes.find((entry) => entry.path === "/studio/ai-research");
+  const xSyncRoute = routes.find((entry) => entry.path === "/studio/bookmarks/x-sync");
 
   expect(overviewRoute?.method).toBe("POST");
   expect(postRoute?.method).toBe("POST");
   expect(aiResearchRoute?.method).toBe("POST");
+  expect(xSyncRoute?.method).toBe("POST");
 
   const overviewResponse = await overviewRoute?.handler(
     {
@@ -154,4 +156,132 @@ test("studio HTTP routes reject invalid JSON request bodies", async () => {
   expect(runMutation).not.toHaveBeenCalled();
   expect(response?.status).toBe(400);
   await expect(response?.json()).resolves.toEqual({ error: "Studio request body must be valid JSON." });
+});
+
+test("x sync bookmark route saves the shared external link with derived metadata", async () => {
+  vi.resetModules();
+  route.mockClear();
+  requireStudioWriteKey.mockClear();
+
+  await import("../convex/http");
+
+  const routes = route.mock.calls.map(([entry]) => entry as {
+    path: string;
+    handler: (ctx: Record<string, unknown>, request: Request) => Promise<Response>;
+  });
+  const xSyncRoute = routes.find((entry) => entry.path === "/studio/bookmarks/x-sync");
+  const runAction = vi.fn(async () => ({ ok: true }));
+
+  const response = await xSyncRoute?.handler(
+    {
+      runAction
+    },
+    new Request("https://example.com/studio/bookmarks/x-sync", {
+      method: "POST",
+      headers: {
+        "x-studio-write-key": "secret"
+      },
+      body: JSON.stringify({
+        postUrl: "https://x.com/naruke/status/123",
+        postText: "This is the article worth saving.",
+        authorName: "Naruke",
+        authorHandle: "naruke",
+        externalUrl: "https://example.com/article"
+      })
+    })
+  );
+
+  expect(runAction).toHaveBeenCalledWith("bookmarks.publish", {
+    url: "https://example.com/article",
+    note: "Saved from X\nPost: https://x.com/naruke/status/123\nAuthor: Naruke (@naruke)\n\nThis is the article worth saving.",
+    title: "This is the article worth saving.",
+    description: "This is the article worth saving.",
+    source: "example.com"
+  });
+  expect(response?.status).toBe(200);
+  await expect(response?.json()).resolves.toEqual({ ok: true });
+});
+
+test("x sync bookmark route falls back to the post URL when no external link exists", async () => {
+  vi.resetModules();
+  route.mockClear();
+  requireStudioWriteKey.mockClear();
+
+  await import("../convex/http");
+
+  const routes = route.mock.calls.map(([entry]) => entry as {
+    path: string;
+    handler: (ctx: Record<string, unknown>, request: Request) => Promise<Response>;
+  });
+  const xSyncRoute = routes.find((entry) => entry.path === "/studio/bookmarks/x-sync");
+  const runAction = vi.fn(async () => ({ ok: true }));
+
+  const response = await xSyncRoute?.handler(
+    {
+      runAction
+    },
+    new Request("https://example.com/studio/bookmarks/x-sync", {
+      method: "POST",
+      headers: {
+        "x-studio-write-key": "secret"
+      },
+      body: JSON.stringify({
+        postUrl: "https://x.com/naruke/status/123",
+        postText: "",
+        authorHandle: "naruke"
+      })
+    })
+  );
+
+  expect(runAction).toHaveBeenCalledWith("bookmarks.publish", {
+    url: "https://x.com/naruke/status/123",
+    note: "Saved from X\nPost: https://x.com/naruke/status/123\nAuthor: @naruke",
+    title: "Post by @naruke",
+    description: "Saved X post by @naruke.",
+    source: "x.com"
+  });
+  expect(response?.status).toBe(200);
+  await expect(response?.json()).resolves.toEqual({ ok: true });
+});
+
+test("x sync bookmark route resolves t.co links before saving", async () => {
+  vi.resetModules();
+  route.mockClear();
+  requireStudioWriteKey.mockClear();
+
+  const fetchMock = vi.fn(async () => ({
+    url: "https://example.com/resolved-article"
+  }));
+  vi.stubGlobal("fetch", fetchMock);
+
+  await import("../convex/http");
+
+  const routes = route.mock.calls.map(([entry]) => entry as {
+    path: string;
+    handler: (ctx: Record<string, unknown>, request: Request) => Promise<Response>;
+  });
+  const xSyncRoute = routes.find((entry) => entry.path === "/studio/bookmarks/x-sync");
+  const runAction = vi.fn(async () => ({ ok: true }));
+
+  await xSyncRoute?.handler(
+    {
+      runAction
+    },
+    new Request("https://example.com/studio/bookmarks/x-sync", {
+      method: "POST",
+      headers: {
+        "x-studio-write-key": "secret"
+      },
+      body: JSON.stringify({
+        postUrl: "https://x.com/naruke/status/123",
+        externalUrl: "https://t.co/abc123"
+      })
+    })
+  );
+
+  expect(fetchMock).toHaveBeenCalledWith("https://t.co/abc123", { redirect: "follow" });
+  expect(runAction).toHaveBeenCalledWith("bookmarks.publish", expect.objectContaining({
+    url: "https://example.com/resolved-article",
+    source: "example.com"
+  }));
 });
