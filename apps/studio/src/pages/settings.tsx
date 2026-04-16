@@ -80,13 +80,13 @@ export function SettingsPage() {
   }, [bridge]);
 
   return (
-    <div className="mx-auto max-w-3xl space-y-6 fade-up">
+    <div className="mx-auto w-full max-w-5xl space-y-6 fade-up">
       <div>
         <h2 className="text-2xl font-semibold text-foreground">Settings</h2>
         <p className="mt-1 text-sm text-muted-foreground">Configure environments, keys, and integrations.</p>
       </div>
 
-      <form onSubmit={(e) => void handleSave(e)}>
+      <form onSubmit={(e) => void handleSave(e)} className="space-y-6">
         <Tabs value={tab} onValueChange={setTab}>
           <TabsList>
             <TabsTrigger value="environments">Environments</TabsTrigger>
@@ -110,27 +110,29 @@ export function SettingsPage() {
               ))}
             </div>
 
-            {(["dev", "prod"] as const).map((env) => {
-              const merged = {
-                ...settings.environments[env],
-                ...envPatches[env],
-                deployKeyConfigured: clearKeys.includes(env) ? false : settings.environments[env].deployKeyConfigured,
-              };
-              return (
-                <EnvironmentCard
-                  key={env}
-                  env={env}
-                  settings={merged}
-                  isActive={selectedEnv === env}
-                  onChange={(patch) => patchEnv(env, patch)}
-                  onClearKey={() => handleClearKey(env)}
-                  onTestConnection={testConvex}
-                />
-              );
-            })}
+            <div className="grid gap-4 xl:grid-cols-2">
+              {(["dev", "prod"] as const).map((env) => {
+                const merged = {
+                  ...settings.environments[env],
+                  ...envPatches[env],
+                  deployKeyConfigured: clearKeys.includes(env) ? false : settings.environments[env].deployKeyConfigured,
+                };
+                return (
+                  <EnvironmentCard
+                    key={env}
+                    env={env}
+                    settings={merged}
+                    isActive={selectedEnv === env}
+                    onChange={(patch) => patchEnv(env, patch)}
+                    onClearKey={() => handleClearKey(env)}
+                    onTestConnection={testConvex}
+                  />
+                );
+              })}
+            </div>
           </TabsContent>
 
-          <TabsContent value="opencode">
+          <TabsContent value="opencode" className="max-w-4xl">
             <OpenCodeCard
               opencodeCommand={opencodeCommand}
               opencodeBaseUrl={opencodeBaseUrl}
