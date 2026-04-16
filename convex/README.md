@@ -30,4 +30,4 @@ function handleButtonPress() {
 }
 ```
 
-Use the Convex CLI to push your functions to a deployment.
+Use the Convex CLI to push your functions to a deployment. now
