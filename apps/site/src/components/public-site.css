@@ -664,7 +664,7 @@
     gap: 1rem;
     align-items: start;
     padding: 1rem 1.2rem;
-    background: rgba(255, 255, 255, .02);
+    background: rgba(12, 16, 30, .72);
     border-radius: 12px;
     border: 1px solid rgba(255, 255, 255, .05);
     text-decoration: none;
@@ -682,7 +682,7 @@
 }
 
 .pub-bookmark:hover {
-    background: rgba(120, 80, 255, .08);
+    background: rgba(38, 26, 82, .88);
     border-color: rgba(120, 80, 255, .3);
 }
 

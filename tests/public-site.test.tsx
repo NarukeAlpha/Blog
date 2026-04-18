@@ -62,6 +62,17 @@ const bookmarks: PublicBookmarkRecord[] = [
   }
 ];
 
+function createBookmark(index: number): PublicBookmarkRecord {
+  return {
+    url: `https://example.com/bookmark-${index}`,
+    title: `Bookmark ${index}`,
+    description: `Bookmark description ${index}`,
+    source: `Source ${index}`,
+    thumbnailUrl: index % 2 === 0 ? `https://example.com/thumb-${index}.png` : "",
+    addedAt: Date.UTC(2026, 0, 20 - index)
+  };
+}
+
 function mockQueries(nextPosts: PostRecord[] = posts, nextBookmarks: PublicBookmarkRecord[] = bookmarks) {
   useQuery.mockImplementation((query) => {
     if (query === api.public.listPosts) {
@@ -143,4 +154,39 @@ test("public site renders bookmark cards and optional thumbnails", () => {
   expect(screen.queryByAltText("Bookmark Without Thumb")).not.toBeInTheDocument();
   expect(screen.getByText("A practical article on design systems.")).toBeInTheDocument();
   expect(screen.getByText("Example Notes")).toBeInTheDocument();
+});
+
+test("public site expands bookmarks on first open and loads more on scroll", async () => {
+  mockQueries(posts, Array.from({ length: 13 }, (_, index) => createBookmark(index + 1)));
+
+  render(<PublicSite />);
+
+  fireEvent.click(screen.getByRole("button", { name: /reading list/i }));
+
+  await waitFor(() => expect(screen.getByText("Bookmark 8")).toBeInTheDocument());
+  expect(screen.queryByText("Bookmark 9")).not.toBeInTheDocument();
+
+  const contentSection = document.querySelector(".pub-content-section") as HTMLDivElement | null;
+
+  expect(contentSection).not.toBeNull();
+
+  Object.defineProperties(contentSection as HTMLDivElement, {
+    scrollHeight: {
+      configurable: true,
+      value: 1600
+    },
+    clientHeight: {
+      configurable: true,
+      value: 800
+    },
+    scrollTop: {
+      configurable: true,
+      writable: true,
+      value: 740
+    }
+  });
+
+  fireEvent.scroll(contentSection as HTMLDivElement);
+
+  await waitFor(() => expect(screen.getByText("Bookmark 13")).toBeInTheDocument());
 });

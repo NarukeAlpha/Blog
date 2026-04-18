@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useQuery } from "convex/react";
 import { ArrowUpRight, BookOpen, Bookmark, Brain, Github, Menu } from "lucide-react";
 import ReactMarkdown from "react-markdown";
@@ -81,12 +81,16 @@ export function PublicSite() {
   );
   const isAiResearchLoading = activeAiResearchSlug !== null && activeAiResearch === undefined;
   const isAiResearchMissing = activeAiResearchSlug !== null && activeAiResearch === null;
-  const highlightedBookmarks = bookmarks.slice(0, 4);
   const latest = posts[0] ?? null;
 
   const [activeTab, setActiveTab] = useState<ContentTab>(() => parseHash().tab);
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const [mobileOpen, setMobileOpen] = useState(false);
+  const [visibleBookmarkCount, setVisibleBookmarkCount] = useState(3);
+  const [bookmarksExpandedOnce, setBookmarksExpandedOnce] = useState(false);
+  const contentSectionRef = useRef<HTMLDivElement | null>(null);
+  const bookmarkScrollTriggeredRef = useRef(false);
+  const visibleBookmarks = bookmarks.slice(0, visibleBookmarkCount);
 
   useEffect(() => {
     const syncTabFromHash = () => {
@@ -116,6 +120,47 @@ export function PublicSite() {
       window.history.replaceState(null, "", "#bookmarks");
     }
   }, [activeAiResearchSlug, activePostSlug, activeTab]);
+
+  useEffect(() => {
+    if (activeTab !== "bookmarks" || bookmarksExpandedOnce) {
+      return;
+    }
+
+    setBookmarksExpandedOnce(true);
+    setVisibleBookmarkCount(8);
+  }, [activeTab, bookmarksExpandedOnce]);
+
+  useEffect(() => {
+    const container = contentSectionRef.current;
+
+    if (!container || activeTab !== "bookmarks") {
+      bookmarkScrollTriggeredRef.current = false;
+      return;
+    }
+
+    const handleScroll = () => {
+      const distanceFromBottom = container.scrollHeight - container.scrollTop - container.clientHeight;
+      const isNearBottom = distanceFromBottom <= 120;
+
+      if (!isNearBottom) {
+        bookmarkScrollTriggeredRef.current = false;
+        return;
+      }
+
+      if (bookmarkScrollTriggeredRef.current || visibleBookmarkCount >= bookmarks.length) {
+        return;
+      }
+
+      bookmarkScrollTriggeredRef.current = true;
+      setVisibleBookmarkCount((current) => Math.min(current + 5, bookmarks.length));
+    };
+
+    container.addEventListener("scroll", handleScroll, { passive: true });
+
+    return () => {
+      container.removeEventListener("scroll", handleScroll);
+    };
+  }, [activeTab, bookmarks.length, visibleBookmarkCount]);
 
   const sidebarItems = activeTab === "journal"
       ? posts.map((p) => ({ key: p.slug, label: p.title, meta: `${p.readingTimeMinutes}m`, active: p.slug === activePost?.slug }))
@@ -322,7 +367,7 @@ export function PublicSite() {
             </header>
 
             {/* ── CONTENT AREA ── */}
-            <div className="pub-reveal pub-reveal-2 pub-content-section">
+            <div ref={contentSectionRef} className="pub-reveal pub-reveal-2 pub-content-section">
               {/* ── JOURNAL TAB ── */}
               {activeTab === "journal" && (
                   <div className="pub-tab-body">
@@ -380,11 +425,11 @@ export function PublicSite() {
               {/* ── BOOKMARKS TAB ── */}
               {activeTab === "bookmarks" && (
                   <div className="pub-tab-body">
-                    {highlightedBookmarks.length > 0 ? (
+                    {visibleBookmarks.length > 0 ? (
                         <div className="pub-timeline">
                           <div className="pub-timeline-line" />
 
-                          {highlightedBookmarks.map((bm) => (
+                          {visibleBookmarks.map((bm) => (
                               <a
                                   key={bm.url}
                                   href={bm.url}
