@@ -26,9 +26,9 @@ export function Sidebar() {
   const envLabel = envLabels[status.activeEnvironment];
 
   return (
-    <aside className="flex h-full w-[220px] flex-col border-r border-border bg-card/50 px-3 pb-3 pt-12">
+    <aside className="titlebar-no-drag flex h-full w-[220px] shrink-0 flex-col border-r border-border bg-card/60 px-3 py-4">
       <div className="mb-5 px-2">
-        <h1 className="text-lg font-semibold text-foreground">Writer Studio</h1>
+        <p className="text-[11px] font-medium uppercase tracking-[0.28em] text-muted-foreground/70">Workspace</p>
         <Badge variant="outline" className="mt-1.5 gap-1.5 text-[10px]">
           <span className={cn("h-1.5 w-1.5 rounded-full", status.convexReachable ? "bg-success" : "bg-destructive")} />
           {envLabel}

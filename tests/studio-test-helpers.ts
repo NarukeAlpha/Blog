@@ -3,6 +3,8 @@ import type {
   PostPublishResult,
   SaveStudioEnvironmentSettingsPayload,
   SaveStudioSettingsPayload,
+  StudioBookmarkRecord,
+  StudioBookmarkUpdatePayload,
   StudioBootstrap,
   StudioBridge,
   StudioEnvironment,
@@ -101,6 +103,22 @@ export function createStudioStatus(overrides: Partial<StudioStatus> = {}): Studi
   };
 }
 
+export function createStudioBookmark(overrides: Partial<StudioBookmarkRecord> = {}): StudioBookmarkRecord {
+  return {
+    id: "bookmark-1",
+    url: "https://example.com/bookmark",
+    title: "Latest Bookmark",
+    description: "Latest bookmark description",
+    source: "Example",
+    thumbnailUrl: "",
+    note: "",
+    addedAt: Date.UTC(2026, 0, 6),
+    thumbnailSourceUrl: "",
+    thumbnailStorageId: null,
+    ...overrides
+  };
+}
+
 function applySettingsPayload(current: StudioSettings, payload: SaveStudioSettingsPayload): StudioSettings {
   const clearDeployKeys = new Set(payload.clearDeployKeys ?? []);
 
@@ -143,6 +161,21 @@ export function createBootstrap(overrides: Partial<StudioBootstrap> = {}): Studi
 
 export function createStudioBridge(overrides: Partial<StudioBridge> = {}): StudioBridge {
   let bootstrap = createBootstrap();
+  let studioBookmarks = [
+    createStudioBookmark(),
+    createStudioBookmark({
+      id: "bookmark-2",
+      url: "https://example.com/another-bookmark",
+      title: "Another Bookmark",
+      description: "Another bookmark description",
+      source: "Another Example",
+      addedAt: Date.UTC(2026, 0, 4),
+      note: "Second bookmark note",
+      thumbnailSourceUrl: "https://example.com/another-bookmark.png",
+      thumbnailStorageId: "storage-id",
+      thumbnailUrl: "https://cdn.example.com/another-bookmark.png"
+    })
+  ];
   const postResult: PostPublishResult = {
     ok: true,
     post: {
@@ -153,19 +186,6 @@ export function createStudioBridge(overrides: Partial<StudioBridge> = {}): Studi
       publishedAt: Date.UTC(2026, 0, 5),
       readingTimeMinutes: 4
     }
-  };
-  const bookmarkResult: BookmarkPublishResult = {
-    ok: true,
-    bookmark: {
-      url: "https://example.com/bookmark",
-      title: "Latest Bookmark",
-      description: "Latest bookmark description",
-      source: "Example",
-      thumbnailUrl: "",
-      note: "",
-      addedAt: Date.UTC(2026, 0, 6)
-    },
-    thumbnailCachePath: null
   };
 
   const saveSettings = vi.fn(async (payload: SaveStudioSettingsPayload) => {
@@ -195,7 +215,38 @@ export function createStudioBridge(overrides: Partial<StudioBridge> = {}): Studi
     getStatus: vi.fn(async () => bootstrap.status),
     saveSettings,
     publishPost: vi.fn(async () => postResult),
-    publishBookmark: vi.fn(async () => bookmarkResult),
+    publishBookmark: vi.fn(async (payload) => {
+      const bookmark = createStudioBookmark({
+        id: `bookmark-${studioBookmarks.length + 1}`,
+        url: payload.url,
+        title: "Saved Bookmark",
+        description: "Saved bookmark description",
+        source: "Example",
+        note: payload.note,
+        addedAt: Date.UTC(2026, 0, 7)
+      });
+      const bookmarkResult: BookmarkPublishResult = {
+        ok: true,
+        bookmark,
+        thumbnailCachePath: null
+      };
+
+      studioBookmarks = [bookmark, ...studioBookmarks];
+      return bookmarkResult;
+    }),
+    listBookmarks: vi.fn(async () => studioBookmarks.map((bookmark) => ({ ...bookmark }))),
+    updateBookmark: vi.fn(async (payload: StudioBookmarkUpdatePayload) => {
+      const existing = studioBookmarks.find((bookmark) => bookmark.id === payload.id);
+      const updatedBookmark = createStudioBookmark({
+        ...(existing || {}),
+        ...payload,
+        thumbnailStorageId: existing?.thumbnailStorageId ?? null,
+        thumbnailUrl: payload.thumbnailSourceUrl || existing?.thumbnailUrl || ""
+      });
+
+      studioBookmarks = studioBookmarks.map((bookmark) => bookmark.id === payload.id ? updatedBookmark : bookmark);
+      return updatedBookmark;
+    }),
     openExternal: vi.fn(async () => {}),
     ...overrides
   };

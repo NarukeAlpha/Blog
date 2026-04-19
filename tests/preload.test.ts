@@ -40,6 +40,17 @@ test("preload exposes the studio bridge and routes IPC calls", async () => {
   });
   studioBridge.publishPost({ title: "Hello", body: "Body" });
   studioBridge.publishBookmark({ url: "https://example.com", note: "Note" });
+  studioBridge.listBookmarks();
+  studioBridge.updateBookmark({
+    id: "bookmark-1",
+    url: "https://example.com",
+    title: "Bookmark",
+    description: "Description",
+    source: "Example",
+    note: "Note",
+    addedAt: 123,
+    thumbnailSourceUrl: ""
+  });
   studioBridge.openExternal("https://example.com");
 
   expect(invoke).toHaveBeenNthCalledWith(1, "studio:get-bootstrap");
@@ -54,5 +65,16 @@ test("preload exposes the studio bridge and routes IPC calls", async () => {
   });
   expect(invoke).toHaveBeenNthCalledWith(4, "studio:publish-post", { title: "Hello", body: "Body" });
   expect(invoke).toHaveBeenNthCalledWith(5, "studio:publish-bookmark", { url: "https://example.com", note: "Note" });
-  expect(invoke).toHaveBeenNthCalledWith(6, "studio:open-external", "https://example.com");
+  expect(invoke).toHaveBeenNthCalledWith(6, "studio:list-bookmarks");
+  expect(invoke).toHaveBeenNthCalledWith(7, "studio:update-bookmark", {
+    id: "bookmark-1",
+    url: "https://example.com",
+    title: "Bookmark",
+    description: "Description",
+    source: "Example",
+    note: "Note",
+    addedAt: 123,
+    thumbnailSourceUrl: ""
+  });
+  expect(invoke).toHaveBeenNthCalledWith(8, "studio:open-external", "https://example.com");
 });

@@ -60,7 +60,9 @@ vi.mock("../apps/studio/lib/convex", () => ({
   })),
   hasDeployKey: vi.fn(async () => true),
   isConvexConfigured: vi.fn(async () => true),
-  isConvexReachable: vi.fn(async () => true)
+  isConvexReachable: vi.fn(async () => true),
+  listStudioBookmarks: vi.fn(async () => []),
+  updateStudioBookmark: vi.fn(async () => ({ id: "bookmark-1" }))
 }));
 
 vi.mock("../apps/studio/lib/env", () => ({
@@ -140,6 +142,33 @@ test("electron main registers IPC handlers and guards external windows", async (
   expect(ensureStudioDirectories).toHaveBeenCalledTimes(1);
   expect(BrowserWindow).toHaveBeenCalledTimes(1);
   expect(browserWindowInstance.loadFile).toHaveBeenCalledWith("/workspace/dist/studio/renderer/index.html");
+  const browserWindowCalls = BrowserWindow.mock.calls as Array<[unknown?]>;
+  const windowOptions = browserWindowCalls[0]?.[0] as
+    | {
+        backgroundColor?: string;
+        title?: string;
+        titleBarStyle?: string;
+        titleBarOverlay?: {
+          color?: string;
+          symbolColor?: string;
+          height?: number;
+        };
+      }
+    | undefined;
+  expect(windowOptions).toMatchObject({
+    backgroundColor: "#0c0e1a",
+    title: "Writer Studio",
+    titleBarStyle: "hidden"
+  });
+  if (process.platform === "darwin") {
+    expect(windowOptions?.titleBarOverlay).toBeUndefined();
+  } else {
+    expect(windowOptions?.titleBarOverlay).toEqual({
+      color: "#121427cc",
+      symbolColor: "#eef2ff",
+      height: 56
+    });
+  }
 
   const registeredChannels = handle.mock.calls.map(([channel]) => channel);
   expect(registeredChannels).toEqual([
@@ -148,6 +177,8 @@ test("electron main registers IPC handlers and guards external windows", async (
     "studio:save-settings",
     "studio:publish-post",
     "studio:publish-bookmark",
+    "studio:list-bookmarks",
+    "studio:update-bookmark",
     "studio:open-external"
   ]);
 
