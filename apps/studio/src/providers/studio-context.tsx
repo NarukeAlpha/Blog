@@ -51,6 +51,24 @@ export function StudioProvider({ children }: { children: ReactNode }) {
   const [bootError, setBootError] = useState("");
   const [isLoadingStatus, setIsLoadingStatus] = useState(false);
   const pollIntervalRef = useRef<ReturnType<typeof setInterval> | undefined>(undefined);
+  const bootstrapRef = useRef(bootstrap);
+  bootstrapRef.current = bootstrap;
+
+  const refreshStatus = useCallback(async (silent = true) => {
+    if (!bootstrapRef.current) return;
+    setIsLoadingStatus(true);
+    try {
+      const next = await bridge!.getStatus();
+      setBootstrap((prev) => prev ? { ...prev, status: next } : prev);
+    } catch (err) {
+      if (!silent) throw err;
+    } finally {
+      setIsLoadingStatus(false);
+    }
+  }, [bridge]);
+
+  const refreshStatusRef = useRef(refreshStatus);
+  refreshStatusRef.current = refreshStatus;
 
   useEffect(() => {
     if (!bridge) return;
@@ -59,26 +77,15 @@ export function StudioProvider({ children }: { children: ReactNode }) {
     });
   }, [bridge]);
 
-  const refreshStatus = useCallback(async (silent = true) => {
-    if (!bridge || !bootstrap) return;
-    setIsLoadingStatus(true);
-    try {
-      const next = await bridge.getStatus();
-      setBootstrap((prev) => prev ? { ...prev, status: next } : prev);
-    } catch (err) {
-      if (!silent) throw err;
-    } finally {
-      setIsLoadingStatus(false);
-    }
-  }, [bridge, bootstrap]);
-
   useEffect(() => {
-    if (!bootstrap) return;
+    function doRefresh() {
+      void refreshStatusRef.current();
+    }
 
     function startPolling() {
       stopPolling();
-      void refreshStatus();
-      pollIntervalRef.current = setInterval(() => { void refreshStatus(); }, POLL_INTERVAL_MS);
+      doRefresh();
+      pollIntervalRef.current = setInterval(doRefresh, POLL_INTERVAL_MS);
     }
 
     function stopPolling() {
@@ -110,7 +117,7 @@ export function StudioProvider({ children }: { children: ReactNode }) {
       window.removeEventListener("focus", startPolling);
       window.removeEventListener("blur", stopPolling);
     };
-  }, [bootstrap, refreshStatus, bridge]);
+  }, [bridge]);
 
   const updateBootstrap = useCallback((next: StudioBootstrap) => {
     setBootstrap(next);

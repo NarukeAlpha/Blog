@@ -46,23 +46,27 @@ async function getStatusPayload(): Promise<StudioStatus> {
     }
   }
 
-  if (convexReachable && deployKeyConfigured) {
-    try {
-      overview = await getSiteOverview();
-      postCount = overview.postCount;
-      bookmarkCount = overview.bookmarkCount;
-    } catch (error) {
-      overview = null;
-      overviewError = error instanceof Error ? error.message : "Failed to load site overview.";
+  if (convexReachable) {
+    if (deployKeyConfigured) {
+      try {
+        overview = await getSiteOverview();
+        postCount = overview.postCount;
+        bookmarkCount = overview.bookmarkCount;
+      } catch (error) {
+        overview = null;
+        overviewError = error instanceof Error ? error.message : "Failed to load site overview.";
+      }
     }
-  } else if (convexReachable) {
-    try {
-      const counts = await getPublicSiteCounts();
-      postCount = counts.postCount;
-      bookmarkCount = counts.bookmarkCount;
-    } catch {
-      postCount = null;
-      bookmarkCount = null;
+
+    if (overview === null) {
+      try {
+        const counts = await getPublicSiteCounts();
+        if (postCount === null) postCount = counts.postCount;
+        if (bookmarkCount === null) bookmarkCount = counts.bookmarkCount;
+      } catch {
+        postCount = null;
+        bookmarkCount = null;
+      }
     }
   }
 
