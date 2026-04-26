@@ -12,14 +12,11 @@ import type {
   StudioBookmarkPublishRequest,
   StudioErrorResponse
 } from "@shared/types";
+import { isRecord } from "@shared/lib";
 import { getActiveStudioRuntimeSettings } from "./settings";
 
 let client: ConvexHttpClient | null = null;
 let clientUrl = "";
-
-function isRecord(value: unknown): value is Record<string, unknown> {
-  return Boolean(value) && typeof value === "object" && !Array.isArray(value);
-}
 
 function readRequiredString(value: Record<string, unknown>, key: string, context: string) {
   const entry = value[key];

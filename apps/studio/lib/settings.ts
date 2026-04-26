@@ -61,7 +61,11 @@ interface EnvironmentDefaults {
 }
 
 const SETTINGS_VERSION = 2;
+const SETTINGS_CACHE_TTL_MS = 5_000;
 const STUDIO_ENVIRONMENTS: StudioEnvironment[] = ["dev", "prod"];
+
+let cachedStoredSettings: StoredStudioSettings | null = null;
+let cachedAt = 0;
 
 function getSafeStorage() {
   try {
@@ -227,16 +231,24 @@ function getEnvironmentDefaults() {
 }
 
 async function readStoredSettings() {
+  if (cachedStoredSettings && Date.now() - cachedAt < SETTINGS_CACHE_TTL_MS) {
+    return cachedStoredSettings;
+  }
+
   const { settingsFile } = getStudioPaths();
 
   try {
     const raw = await readFile(settingsFile, "utf8");
     const parsed = parseStoredSettings(JSON.parse(raw));
 
-    return parsed || { version: SETTINGS_VERSION };
+    cachedStoredSettings = parsed || { version: SETTINGS_VERSION };
+    cachedAt = Date.now();
+    return cachedStoredSettings;
   } catch (error) {
     if ((error as NodeJS.ErrnoException).code === "ENOENT") {
-      return { version: SETTINGS_VERSION };
+      cachedStoredSettings = { version: SETTINGS_VERSION };
+      cachedAt = Date.now();
+      return cachedStoredSettings;
     }
 
     throw error;
@@ -485,6 +497,9 @@ export async function saveStudioSettings(payload: SaveStudioSettingsPayload) {
 
   await ensureStudioDirectories();
   await writeFile(getStudioPaths().settingsFile, `${JSON.stringify(nextStored, null, 2)}\n`, "utf8");
+
+  cachedStoredSettings = nextStored;
+  cachedAt = Date.now();
 
   return toPublicSettings(nextSettings);
 }

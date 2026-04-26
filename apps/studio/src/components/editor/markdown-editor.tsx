@@ -1,4 +1,4 @@
-import { useCallback, useRef } from "react";
+import { memo, useCallback, useDeferredValue, useRef } from "react";
 import { Group as PanelGroup, Panel, Separator as PanelResizeHandle } from "react-resizable-panels";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
@@ -10,8 +10,21 @@ interface MarkdownEditorProps {
   onChange: (value: string) => void;
 }
 
+const MarkdownPreview = memo(function MarkdownPreview({ text }: { text: string }) {
+  if (!text.trim()) {
+    return <p className="text-sm text-muted-foreground/50">Preview will appear here...</p>;
+  }
+
+  return (
+    <div className="ink-prose text-sm">
+      <ReactMarkdown remarkPlugins={[remarkGfm]}>{text}</ReactMarkdown>
+    </div>
+  );
+});
+
 export function MarkdownEditor({ value, onChange }: MarkdownEditorProps) {
   const textareaRef = useRef<HTMLTextAreaElement>(null);
+  const deferredValue = useDeferredValue(value);
 
   const handleInsert = useCallback((before: string, after = "") => {
     const el = textareaRef.current;
@@ -53,13 +66,7 @@ export function MarkdownEditor({ value, onChange }: MarkdownEditorProps) {
         <PanelResizeHandle className="w-px bg-border hover:bg-accent/40 transition-colors" />
         <Panel defaultSize={40} minSize={20} className="min-w-0">
           <div className="h-full overflow-y-auto border-l border-border bg-muted/20 p-4">
-            {value.trim() ? (
-              <div className="ink-prose text-sm">
-                <ReactMarkdown remarkPlugins={[remarkGfm]}>{value}</ReactMarkdown>
-              </div>
-            ) : (
-              <p className="text-sm text-muted-foreground/50">Preview will appear here...</p>
-            )}
+            <MarkdownPreview text={deferredValue} />
           </div>
         </Panel>
       </PanelGroup>

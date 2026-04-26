@@ -148,7 +148,8 @@ test("electron main registers IPC handlers and guards external windows", async (
     "studio:save-settings",
     "studio:publish-post",
     "studio:publish-bookmark",
-    "studio:open-external"
+    "studio:open-external",
+    "studio:window-visibility"
   ]);
 
   const windowOpenHandler = browserWindowInstance.webContents.setWindowOpenHandler.mock.calls[0]?.[0] as

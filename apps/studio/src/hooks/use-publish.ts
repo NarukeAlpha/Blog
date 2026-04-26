@@ -1,4 +1,4 @@
-import { useCallback, useState } from "react";
+import { useCallback, useRef, useState } from "react";
 import { toast } from "sonner";
 
 interface UsePublishOptions<TResult> {
@@ -12,22 +12,26 @@ export function usePublish<TPayload, TResult>(
   options: UsePublishOptions<TResult>
 ) {
   const [isBusy, setIsBusy] = useState(false);
+  const actionRef = useRef(action);
+  const optionsRef = useRef(options);
+  actionRef.current = action;
+  optionsRef.current = options;
 
   const execute = useCallback(async (payload: TPayload) => {
     setIsBusy(true);
     try {
-      const result = await action(payload);
-      toast.success(options.successTitle);
-      options.onSuccess?.(result);
+      const result = await actionRef.current(payload);
+      toast.success(optionsRef.current.successTitle);
+      optionsRef.current.onSuccess?.(result);
       return result;
     } catch (err) {
       const message = err instanceof Error ? err.message : "Something went wrong.";
-      toast.error(options.errorTitle, { description: message });
+      toast.error(optionsRef.current.errorTitle, { description: message });
       return null;
     } finally {
       setIsBusy(false);
     }
-  }, [action, options]);
+  }, []);
 
   return { execute, isBusy };
 }

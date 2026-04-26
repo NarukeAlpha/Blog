@@ -80,8 +80,7 @@
       "output": "release/studio"
     },
     "files": [
-      "dist/studio/**/*",
-      "package.json"
+      "dist/studio/**/*"
     ],
     "mac": {
       "category": "public.app-category.productivity",
