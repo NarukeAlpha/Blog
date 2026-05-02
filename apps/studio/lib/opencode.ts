@@ -4,6 +4,7 @@ import { createOpencodeClient, type Part } from "@opencode-ai/sdk/v2/client";
 
 import { DEFAULT_OPENCODE_BASE_URL, getStudioPaths } from "./paths";
 import { getStudioRuntimeSettings } from "./settings";
+import { isRecord } from "@shared/lib";
 import type { BookmarkResearchResult, OpencodeServerStatus } from "@shared/types";
 
 interface HealthResponse {
@@ -120,10 +121,6 @@ function unwrapResponseData(response: unknown) {
   }
 
   return response;
-}
-
-function isRecord(value: unknown): value is Record<string, unknown> {
-  return Boolean(value) && typeof value === "object" && !Array.isArray(value);
 }
 
 function parseHealthResponse(value: unknown): HealthResponse | null {

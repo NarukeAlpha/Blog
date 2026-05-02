@@ -1,3 +1,15 @@
+export const IPC_CHANNELS = {
+  GET_BOOTSTRAP: "studio:get-bootstrap",
+  GET_STATUS: "studio:get-status",
+  SAVE_SETTINGS: "studio:save-settings",
+  PUBLISH_POST: "studio:publish-post",
+  PUBLISH_BOOKMARK: "studio:publish-bookmark",
+  LIST_BOOKMARKS: "studio:list-bookmarks",
+  UPDATE_BOOKMARK: "studio:update-bookmark",
+  OPEN_EXTERNAL: "studio:open-external",
+  WINDOW_VISIBILITY: "studio:window-visibility"
+} as const;
+
 export type StudioEnvironment = "dev" | "prod";
 
 export interface StudioEnvironmentSettings {
@@ -176,6 +188,7 @@ export interface StudioBridge {
   listBookmarks: () => Promise<StudioBookmarkRecord[]>;
   updateBookmark: (payload: StudioBookmarkUpdatePayload) => Promise<StudioBookmarkRecord>;
   openExternal: (url: string) => Promise<void>;
+  isWindowFocused: () => Promise<boolean>;
 }
 
 export interface OpencodeServerStatus {

@@ -248,6 +248,7 @@ export function createStudioBridge(overrides: Partial<StudioBridge> = {}): Studi
       return updatedBookmark;
     }),
     openExternal: vi.fn(async () => {}),
+    isWindowFocused: vi.fn(async () => true),
     ...overrides
   };
 }

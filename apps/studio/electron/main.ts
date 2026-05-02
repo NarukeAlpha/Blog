@@ -10,6 +10,7 @@ import type {
   StudioBootstrap,
   StudioStatus
 } from "@shared/types";
+import { IPC_CHANNELS } from "@shared/types";
 
 import {
   getActiveStudioConnection,
@@ -37,11 +38,14 @@ let mainWindow: BrowserWindow | null = null;
 
 async function getStatusPayload(): Promise<StudioStatus> {
   const { appPath, thumbnailsDir, userDataDir } = getStudioPaths();
-  const activeConnection = await getActiveStudioConnection();
-  const opencodeReady = await isOpencodeHealthy();
-  const opencodeConfigured = await isOpencodeConfigured();
-  const convexConfigured = await isConvexConfigured();
-  const deployKeyConfigured = await hasDeployKey();
+
+  const [activeConnection, opencodeReady, opencodeConfigured, convexConfigured, deployKeyConfigured] = await Promise.all([
+    getActiveStudioConnection(),
+    isOpencodeHealthy(),
+    isOpencodeConfigured(),
+    isConvexConfigured(),
+    hasDeployKey()
+  ]);
 
   let convexReachable = false;
   let postCount: number | null = null;
@@ -59,24 +63,26 @@ async function getStatusPayload(): Promise<StudioStatus> {
   }
 
   if (convexReachable) {
-    try {
-      const counts = await getPublicSiteCounts();
-      postCount = counts.postCount;
-      bookmarkCount = counts.bookmarkCount;
-    } catch {
-      postCount = null;
-      bookmarkCount = null;
+    if (deployKeyConfigured) {
+      try {
+        overview = await getSiteOverview();
+        postCount = overview.postCount;
+        bookmarkCount = overview.bookmarkCount;
+      } catch (error) {
+        overview = null;
+        overviewError = error instanceof Error ? error.message : "Failed to load site overview.";
+      }
     }
-  }
 
-  if (convexReachable && deployKeyConfigured) {
-    try {
-      overview = await getSiteOverview();
-      postCount = overview.postCount;
-      bookmarkCount = overview.bookmarkCount;
-    } catch (error) {
-      overview = null;
-      overviewError = error instanceof Error ? error.message : "Failed to load site overview.";
+    if (overview === null) {
+      try {
+        const counts = await getPublicSiteCounts();
+        if (postCount === null) postCount = counts.postCount;
+        if (bookmarkCount === null) bookmarkCount = counts.bookmarkCount;
+      } catch {
+        postCount = null;
+        bookmarkCount = null;
+      }
     }
   }
 
@@ -108,18 +114,21 @@ async function getBootstrapPayload(): Promise<StudioBootstrap> {
 }
 
 function registerIpc() {
-  ipcMain.handle("studio:get-bootstrap", async () => getBootstrapPayload());
-  ipcMain.handle("studio:get-status", async () => getStatusPayload());
-  ipcMain.handle("studio:save-settings", async (_event, payload: SaveStudioSettingsPayload) => {
+  ipcMain.handle(IPC_CHANNELS.GET_BOOTSTRAP, async () => getBootstrapPayload());
+  ipcMain.handle(IPC_CHANNELS.GET_STATUS, async () => getStatusPayload());
+  ipcMain.handle(IPC_CHANNELS.SAVE_SETTINGS, async (_event, payload: SaveStudioSettingsPayload) => {
     await saveStudioSettings(payload);
     return getBootstrapPayload();
   });
-  ipcMain.handle("studio:publish-post", async (_event, payload: PostPublishPayload) => publishPostDraft(payload));
-  ipcMain.handle("studio:publish-bookmark", async (_event, payload: BookmarkPublishPayload) => publishBookmarkLink(payload));
-  ipcMain.handle("studio:list-bookmarks", async () => listStudioBookmarks());
-  ipcMain.handle("studio:update-bookmark", async (_event, payload: StudioBookmarkUpdatePayload) => updateStudioBookmark(payload));
-  ipcMain.handle("studio:open-external", async (_event, url: string) => {
+  ipcMain.handle(IPC_CHANNELS.PUBLISH_POST, async (_event, payload: PostPublishPayload) => publishPostDraft(payload));
+  ipcMain.handle(IPC_CHANNELS.PUBLISH_BOOKMARK, async (_event, payload: BookmarkPublishPayload) => publishBookmarkLink(payload));
+  ipcMain.handle(IPC_CHANNELS.LIST_BOOKMARKS, async () => listStudioBookmarks());
+  ipcMain.handle(IPC_CHANNELS.UPDATE_BOOKMARK, async (_event, payload: StudioBookmarkUpdatePayload) => updateStudioBookmark(payload));
+  ipcMain.handle(IPC_CHANNELS.OPEN_EXTERNAL, async (_event, url: string) => {
     await shell.openExternal(url);
+  });
+  ipcMain.handle(IPC_CHANNELS.WINDOW_VISIBILITY, async () => {
+    return mainWindow?.isFocused() ?? false;
   });
 }
 
