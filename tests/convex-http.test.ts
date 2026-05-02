@@ -16,7 +16,11 @@ vi.mock("../convex/_generated/api", () => ({
     site: { overview: "site.overview" },
     posts: { publish: "posts.publish" },
     aiResearch: { publish: "aiResearch.publish" },
-    bookmarks: { publish: "bookmarks.publish" }
+    bookmarkInternals: { listForStudio: "bookmarkInternals.listForStudio" },
+    bookmarks: {
+      publish: "bookmarks.publish",
+      updateForStudio: "bookmarks.updateForStudio"
+    }
   }
 }));
 
@@ -35,7 +39,7 @@ test("studio HTTP routes register and enforce the write key", async () => {
 
   await import("../convex/http");
 
-  expect(route).toHaveBeenCalledTimes(5);
+  expect(route).toHaveBeenCalledTimes(7);
   const routes = route.mock.calls.map(([entry]) => entry as {
     path: string;
     method: string;
@@ -44,11 +48,15 @@ test("studio HTTP routes register and enforce the write key", async () => {
   const overviewRoute = routes.find((entry) => entry.path === "/studio/overview");
   const postRoute = routes.find((entry) => entry.path === "/studio/posts");
   const aiResearchRoute = routes.find((entry) => entry.path === "/studio/ai-research");
+  const bookmarkListRoute = routes.find((entry) => entry.path === "/studio/bookmarks/list");
+  const bookmarkUpdateRoute = routes.find((entry) => entry.path === "/studio/bookmarks/update");
   const xSyncRoute = routes.find((entry) => entry.path === "/studio/bookmarks/x-sync");
 
   expect(overviewRoute?.method).toBe("POST");
   expect(postRoute?.method).toBe("POST");
   expect(aiResearchRoute?.method).toBe("POST");
+  expect(bookmarkListRoute?.method).toBe("POST");
+  expect(bookmarkUpdateRoute?.method).toBe("POST");
   expect(xSyncRoute?.method).toBe("POST");
 
   const overviewResponse = await overviewRoute?.handler(
@@ -66,6 +74,22 @@ test("studio HTTP routes register and enforce the write key", async () => {
 
   expect(overviewResponse?.status).toBe(200);
   await expect(overviewResponse?.json()).resolves.toEqual({ postCount: 2, bookmarkCount: 1 });
+
+  const bookmarkListResponse = await bookmarkListRoute?.handler(
+    {
+      runQuery: vi.fn(async () => [{ id: "bookmark-1" }])
+    },
+    new Request("https://example.com/studio/bookmarks/list", {
+      method: "POST",
+      headers: {
+        "x-studio-write-key": "secret"
+      },
+      body: JSON.stringify({})
+    })
+  );
+
+  expect(bookmarkListResponse?.status).toBe(200);
+  await expect(bookmarkListResponse?.json()).resolves.toEqual([{ id: "bookmark-1" }]);
 
   const deniedResponse = await postRoute?.handler(
     {
@@ -124,6 +148,56 @@ test("studio AI research route parses request bodies and calls the publish mutat
   });
   expect(response?.status).toBe(200);
   await expect(response?.json()).resolves.toEqual({ slug: "ship-log", title: "Ship Log" });
+});
+
+test("studio bookmark update route parses request bodies and calls the update action", async () => {
+  vi.resetModules();
+  route.mockClear();
+  requireStudioWriteKey.mockClear();
+
+  await import("../convex/http");
+
+  const routes = route.mock.calls.map(([entry]) => entry as {
+    path: string;
+    handler: (ctx: Record<string, unknown>, request: Request) => Promise<Response>;
+  });
+  const bookmarkUpdateRoute = routes.find((entry) => entry.path === "/studio/bookmarks/update");
+  const runAction = vi.fn(async () => ({ id: "bookmark-1", title: "Updated Bookmark" }));
+
+  const response = await bookmarkUpdateRoute?.handler(
+    {
+      runAction
+    },
+    new Request("https://example.com/studio/bookmarks/update", {
+      method: "POST",
+      headers: {
+        "x-studio-write-key": "secret"
+      },
+      body: JSON.stringify({
+        id: "bookmark-1",
+        url: "https://example.com/bookmark",
+        title: "Updated Bookmark",
+        description: "Description",
+        source: "Example",
+        note: "Note",
+        addedAt: 123,
+        thumbnailSourceUrl: ""
+      })
+    })
+  );
+
+  expect(runAction).toHaveBeenCalledWith("bookmarks.updateForStudio", {
+    id: "bookmark-1",
+    url: "https://example.com/bookmark",
+    title: "Updated Bookmark",
+    description: "Description",
+    source: "Example",
+    note: "Note",
+    addedAt: 123,
+    thumbnailSourceUrl: ""
+  });
+  expect(response?.status).toBe(200);
+  await expect(response?.json()).resolves.toEqual({ id: "bookmark-1", title: "Updated Bookmark" });
 });
 
 test("studio HTTP routes reject invalid JSON request bodies", async () => {

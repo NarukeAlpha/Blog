@@ -2,10 +2,26 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 
 import { app, BrowserWindow, ipcMain, shell } from "electron";
-import type { BookmarkPublishPayload, PostPublishPayload, SaveStudioSettingsPayload, StudioBootstrap, StudioStatus } from "@shared/types";
+import type {
+  BookmarkPublishPayload,
+  PostPublishPayload,
+  SaveStudioSettingsPayload,
+  StudioBookmarkUpdatePayload,
+  StudioBootstrap,
+  StudioStatus
+} from "@shared/types";
 import { IPC_CHANNELS } from "@shared/types";
 
-import { getActiveStudioConnection, getPublicSiteCounts, getSiteOverview, hasDeployKey, isConvexConfigured, isConvexReachable } from "../lib/convex";
+import {
+  getActiveStudioConnection,
+  getPublicSiteCounts,
+  getSiteOverview,
+  hasDeployKey,
+  isConvexConfigured,
+  isConvexReachable,
+  listStudioBookmarks,
+  updateStudioBookmark
+} from "../lib/convex";
 import { loadWorkspaceEnv } from "../lib/env";
 import { isOpencodeConfigured, isOpencodeHealthy, shutdownOpencodeServer } from "../lib/opencode";
 import { getStudioPaths } from "../lib/paths";
@@ -106,6 +122,8 @@ function registerIpc() {
   });
   ipcMain.handle(IPC_CHANNELS.PUBLISH_POST, async (_event, payload: PostPublishPayload) => publishPostDraft(payload));
   ipcMain.handle(IPC_CHANNELS.PUBLISH_BOOKMARK, async (_event, payload: BookmarkPublishPayload) => publishBookmarkLink(payload));
+  ipcMain.handle(IPC_CHANNELS.LIST_BOOKMARKS, async () => listStudioBookmarks());
+  ipcMain.handle(IPC_CHANNELS.UPDATE_BOOKMARK, async (_event, payload: StudioBookmarkUpdatePayload) => updateStudioBookmark(payload));
   ipcMain.handle(IPC_CHANNELS.OPEN_EXTERNAL, async (_event, url: string) => {
     await shell.openExternal(url);
   });
@@ -124,6 +142,15 @@ async function loadRenderer(window: BrowserWindow) {
 }
 
 function createWindow() {
+  const titleBarOverlay =
+    process.platform === "darwin"
+      ? undefined
+      : {
+          color: "#121427cc",
+          symbolColor: "#eef2ff",
+          height: 56
+        };
+
   mainWindow = new BrowserWindow({
     width: 1480,
     height: 980,
@@ -131,13 +158,10 @@ function createWindow() {
     minHeight: 300,
     show: false,
     autoHideMenuBar: true,
-    titleBarStyle: "hiddenInset",
-    trafficLightPosition: { x: 16, y: 18 },
-    vibrancy: "under-window",
-    visualEffectState: "active",
-    transparent: true,
-    backgroundColor: "#00000000",
+    backgroundColor: "#0c0e1a",
     title: "Writer Studio",
+    titleBarStyle: "hidden",
+    ...(titleBarOverlay ? { titleBarOverlay } : {}),
     webPreferences: {
       preload: path.join(__dirname, "preload.cjs"),
       contextIsolation: true,

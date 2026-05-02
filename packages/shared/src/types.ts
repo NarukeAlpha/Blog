@@ -4,6 +4,8 @@ export const IPC_CHANNELS = {
   SAVE_SETTINGS: "studio:save-settings",
   PUBLISH_POST: "studio:publish-post",
   PUBLISH_BOOKMARK: "studio:publish-bookmark",
+  LIST_BOOKMARKS: "studio:list-bookmarks",
+  UPDATE_BOOKMARK: "studio:update-bookmark",
   OPEN_EXTERNAL: "studio:open-external",
   WINDOW_VISIBILITY: "studio:window-visibility"
 } as const;
@@ -107,9 +109,14 @@ export interface PublicBookmarkRecord {
   addedAt: number;
 }
 
-export interface BookmarkRecord extends PublicBookmarkRecord {
+export interface StudioBookmarkRecord extends PublicBookmarkRecord {
+  id: string;
   note: string;
+  thumbnailSourceUrl: string;
+  thumbnailStorageId: string | null;
 }
+
+export type BookmarkRecord = StudioBookmarkRecord;
 
 export interface SiteCounts {
   postCount: number;
@@ -138,6 +145,17 @@ export interface BookmarkPublishPayload {
   note: string;
 }
 
+export interface StudioBookmarkUpdatePayload {
+  id: string;
+  url: string;
+  title: string;
+  description: string;
+  source: string;
+  note: string;
+  addedAt: number;
+  thumbnailSourceUrl: string;
+}
+
 export interface StudioBookmarkPublishRequest extends BookmarkPublishPayload {
   title: string;
   description: string;
@@ -156,7 +174,7 @@ export interface PostPublishResult {
 
 export interface BookmarkPublishResult {
   ok: boolean;
-  bookmark: BookmarkRecord;
+  bookmark: StudioBookmarkRecord;
   thumbnailCachePath?: string | null;
 }
 
@@ -167,6 +185,8 @@ export interface StudioBridge {
   saveSettings: (payload: SaveStudioSettingsPayload) => Promise<StudioBootstrap>;
   publishPost: (payload: PostPublishPayload) => Promise<PostPublishResult>;
   publishBookmark: (payload: BookmarkPublishPayload) => Promise<BookmarkPublishResult>;
+  listBookmarks: () => Promise<StudioBookmarkRecord[]>;
+  updateBookmark: (payload: StudioBookmarkUpdatePayload) => Promise<StudioBookmarkRecord>;
   openExternal: (url: string) => Promise<void>;
   isWindowFocused: () => Promise<boolean>;
 }

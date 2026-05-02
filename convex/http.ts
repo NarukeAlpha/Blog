@@ -1,5 +1,12 @@
 import { httpRouter } from "convex/server";
-import type { AiResearchPublishPayload, PostPublishPayload, StudioBookmarkPublishRequest, StudioErrorResponse } from "../packages/shared/src/types";
+import type {
+  AiResearchPublishPayload,
+  PostPublishPayload,
+  StudioBookmarkPublishRequest,
+  StudioBookmarkUpdatePayload,
+  StudioErrorResponse
+} from "../packages/shared/src/types";
+import type { Id } from "./_generated/dataModel";
 
 import { internal } from "./_generated/api";
 import { httpAction } from "./_generated/server";
@@ -49,6 +56,16 @@ function readRequiredStringField(body: Record<string, unknown>, field: string, c
 
   if (typeof value !== "string") {
     throw new Error(`${context} must include a string ${field}.`);
+  }
+
+  return value;
+}
+
+function readRequiredNumberField(body: Record<string, unknown>, field: string, context: string) {
+  const value = body[field];
+
+  if (typeof value !== "number") {
+    throw new Error(`${context} must include a number ${field}.`);
   }
 
   return value;
@@ -215,6 +232,38 @@ async function parseBookmarkPublishRequest(request: Request): Promise<StudioBook
   };
 }
 
+async function parseBookmarkUpdateRequest(request: Request): Promise<StudioBookmarkUpdatePayload> {
+  requireStudioRequestAuth(request);
+  const body = await parseStudioJsonBody(request);
+
+  if (!isRecord(body)) {
+    throw new Error("Studio bookmark update body must be a JSON object.");
+  }
+
+  return {
+    id: readRequiredStringField(body, "id", "Studio bookmark update"),
+    url: readRequiredStringField(body, "url", "Studio bookmark update"),
+    title: readRequiredStringField(body, "title", "Studio bookmark update"),
+    description: readRequiredStringField(body, "description", "Studio bookmark update"),
+    source: readRequiredStringField(body, "source", "Studio bookmark update"),
+    note: readRequiredStringField(body, "note", "Studio bookmark update"),
+    addedAt: readRequiredNumberField(body, "addedAt", "Studio bookmark update"),
+    thumbnailSourceUrl: readRequiredStringField(body, "thumbnailSourceUrl", "Studio bookmark update")
+  };
+}
+
+type ParsedStudioBookmarkUpdateRequest = Omit<StudioBookmarkUpdatePayload, "id"> & {
+  id: Id<"bookmarks">;
+};
+
+async function parseBookmarkUpdateActionRequest(request: Request): Promise<ParsedStudioBookmarkUpdateRequest> {
+  const body = await parseBookmarkUpdateRequest(request);
+  return {
+    ...body,
+    id: body.id as Id<"bookmarks">
+  };
+}
+
 async function parseXSyncBookmarkPublishRequest(request: Request) {
   requireStudioRequestAuth(request);
   const body = await parseStudioJsonBody(request);
@@ -286,6 +335,19 @@ http.route({
 });
 
 http.route({
+  path: "/studio/bookmarks/list",
+  method: "POST",
+  handler: httpAction(async (ctx, request) => {
+    try {
+      requireStudioRequestAuth(request);
+      return json(await ctx.runQuery(internal.bookmarkInternals.listForStudio, {}));
+    } catch (error) {
+      return errorResponse(error, "Studio bookmark list failed.");
+    }
+  })
+});
+
+http.route({
   path: "/studio/bookmarks",
   method: "POST",
   handler: httpAction(async (ctx, request) => {
@@ -304,6 +366,31 @@ http.route({
       );
     } catch (error) {
       return errorResponse(error, "Studio bookmark publish failed.");
+    }
+  })
+});
+
+http.route({
+  path: "/studio/bookmarks/update",
+  method: "POST",
+  handler: httpAction(async (ctx, request) => {
+    try {
+      const body = await parseBookmarkUpdateActionRequest(request);
+
+      return json(
+        await ctx.runAction(internal.bookmarks.updateForStudio, {
+          id: body.id,
+          url: body.url,
+          title: body.title,
+          description: body.description,
+          source: body.source,
+          note: body.note,
+          addedAt: body.addedAt,
+          thumbnailSourceUrl: body.thumbnailSourceUrl
+        })
+      );
+    } catch (error) {
+      return errorResponse(error, "Studio bookmark update failed.");
     }
   })
 });
