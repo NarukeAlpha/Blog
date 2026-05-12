@@ -1,0 +1,2 @@
+/blog https://blog.alphadevahjin.com 301
+/blog/* https://blog.alphadevahjin.com/:splat 301
