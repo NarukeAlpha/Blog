@@ -1,59 +1,8 @@
 import { v } from "convex/values";
 
-import { createExcerpt, estimateReadingTimeMinutes } from "../packages/shared/src/site";
 import { query } from "./_generated/server";
+import { serializePublicAiResearchFull, serializePublicAiResearchSummary, serializePublicPost } from "./mappers";
 import { serializePublicBookmark } from "./publicBookmarks";
-
-function serializePublicPost(post: {
-  slug: string;
-  title: string;
-  body: string;
-  excerpt: string;
-  publishedAt: number;
-  readingTimeMinutes: number;
-}) {
-  return {
-    slug: post.slug,
-    title: post.title,
-    body: post.body,
-    excerpt: post.excerpt,
-    publishedAt: post.publishedAt,
-    readingTimeMinutes: post.readingTimeMinutes
-  };
-}
-
-function serializePublicAiResearchSummary(entry: {
-  slug: string;
-  title: string;
-  body: string;
-  model: string;
-  prompt: string;
-  publishedAt: number;
-}) {
-  return {
-    slug: entry.slug,
-    title: entry.title,
-    model: entry.model,
-    excerpt: createExcerpt(entry.body),
-    publishedAt: entry.publishedAt,
-    readingTimeMinutes: estimateReadingTimeMinutes(entry.body)
-  };
-}
-
-function serializePublicAiResearch(entry: {
-  slug: string;
-  title: string;
-  body: string;
-  model: string;
-  prompt: string;
-  publishedAt: number;
-}) {
-  return {
-    ...serializePublicAiResearchSummary(entry),
-    body: entry.body,
-    prompt: entry.prompt
-  };
-}
 
 export const health = query({
   args: {},
@@ -96,6 +45,6 @@ export const getAiResearchBySlug = query({
       return null;
     }
 
-    return serializePublicAiResearch(entry);
+    return serializePublicAiResearchFull(entry);
   }
 });

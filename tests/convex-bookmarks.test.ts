@@ -243,3 +243,112 @@ test("studio bookmark updates fall back to source previews when thumbnail refres
     thumbnailStorageId: undefined
   }));
 });
+
+test("studio bookmark updates fall back to source previews when thumbnail storage fails", async () => {
+  const fetchMock = vi.fn(async () => ({
+    ok: true,
+    headers: {
+      get: vi.fn(() => "image/png")
+    },
+    blob: vi.fn(async () => new Blob(["image"], { type: "image/png" }))
+  }));
+  vi.stubGlobal("fetch", fetchMock);
+
+  const bookmarksModule = await import("../convex/bookmarks");
+  const updateForStudio = bookmarksModule.updateForStudio as unknown as {
+    handler: (ctx: Record<string, unknown>, args: Record<string, unknown>) => Promise<unknown>;
+  };
+  const existingBookmark = createExistingBookmark();
+  const updatedBookmark = {
+    ...existingBookmark,
+    thumbnailSourceUrl: "https://example.com/new-image.png",
+    thumbnailStorageId: null,
+    thumbnailUrl: "https://example.com/new-image.png"
+  };
+  let queryCount = 0;
+  const runQuery = vi.fn(async () => {
+    queryCount += 1;
+    return queryCount === 1 ? existingBookmark : updatedBookmark;
+  });
+  const runMutation = vi.fn(async () => "bookmark-1");
+  const storage = {
+    store: vi.fn(async () => {
+      throw new Error("Storage failed.");
+    }),
+    delete: vi.fn(async () => {})
+  };
+
+  await expect(updateForStudio.handler({
+    runQuery,
+    runMutation,
+    storage
+  }, {
+    id: "bookmark-1",
+    url: "https://example.com/bookmark",
+    title: "Existing Bookmark",
+    description: "Existing description",
+    source: "Example",
+    note: "Existing note",
+    addedAt: 123,
+    thumbnailSourceUrl: "https://example.com/new-image.png"
+  })).resolves.toEqual(updatedBookmark);
+
+  expect(fetchMock).toHaveBeenCalledWith("https://example.com/new-image.png");
+  expect(storage.store).toHaveBeenCalledTimes(1);
+  expect(storage.delete).toHaveBeenCalledWith("storage-id");
+  expect(runMutation).toHaveBeenCalledWith("bookmarkInternals.updateById", expect.objectContaining({
+    thumbnailSourceUrl: "https://example.com/new-image.png",
+    thumbnailStorageId: undefined
+  }));
+});
+
+test("studio bookmark updates continue when stored thumbnail deletion fails", async () => {
+  const fetchMock = vi.fn();
+  vi.stubGlobal("fetch", fetchMock);
+
+  const bookmarksModule = await import("../convex/bookmarks");
+  const updateForStudio = bookmarksModule.updateForStudio as unknown as {
+    handler: (ctx: Record<string, unknown>, args: Record<string, unknown>) => Promise<unknown>;
+  };
+  const existingBookmark = createExistingBookmark();
+  const updatedBookmark = {
+    ...existingBookmark,
+    thumbnailSourceUrl: "",
+    thumbnailStorageId: null,
+    thumbnailUrl: ""
+  };
+  let queryCount = 0;
+  const runQuery = vi.fn(async () => {
+    queryCount += 1;
+    return queryCount === 1 ? existingBookmark : updatedBookmark;
+  });
+  const runMutation = vi.fn(async () => "bookmark-1");
+  const storage = {
+    store: vi.fn(async () => "new-storage"),
+    delete: vi.fn(async () => {
+      throw new Error("Delete failed.");
+    })
+  };
+
+  await expect(updateForStudio.handler({
+    runQuery,
+    runMutation,
+    storage
+  }, {
+    id: "bookmark-1",
+    url: "https://example.com/bookmark",
+    title: "Existing Bookmark",
+    description: "Existing description",
+    source: "Example",
+    note: "Existing note",
+    addedAt: 123,
+    thumbnailSourceUrl: ""
+  })).resolves.toEqual(updatedBookmark);
+
+  expect(fetchMock).not.toHaveBeenCalled();
+  expect(storage.delete).toHaveBeenCalledWith("storage-id");
+  expect(runMutation).toHaveBeenCalledWith("bookmarkInternals.updateById", expect.objectContaining({
+    thumbnailSourceUrl: undefined,
+    thumbnailStorageId: undefined
+  }));
+});
