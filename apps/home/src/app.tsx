@@ -24,11 +24,30 @@ function TwinkleLayer() {
   );
 }
 
+const shootingStars = [
+  { top: "-6%", left: "-18%", width: "78px", animationDelay: "1.5s", animationDuration: "18s" },
+  { top: "7%", left: "-30%", width: "64px", animationDelay: "7s", animationDuration: "24s" },
+  { top: "20%", left: "-22%", width: "88px", animationDelay: "13s", animationDuration: "28s" },
+  { top: "-10%", left: "8%", width: "58px", animationDelay: "20s", animationDuration: "22s" },
+  { top: "34%", left: "-36%", width: "72px", animationDelay: "31s", animationDuration: "30s" }
+];
+
+function ShootingStarLayer() {
+  return (
+    <div className="home-shooting-star-layer" aria-hidden>
+      {shootingStars.map((star, index) => (
+        <span key={index} className="home-shooting-star" style={star} />
+      ))}
+    </div>
+  );
+}
+
 function App() {
   return (
     <div className="site-shell pub-shell">
       <div className="stardust-overlay" />
       <TwinkleLayer />
+      <ShootingStarLayer />
 
       <main className="home-stage" aria-labelledby="home-title">
         <header className="home-header">
