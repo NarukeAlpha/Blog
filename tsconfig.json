@@ -17,6 +17,7 @@
     "baseUrl": ".",
     "paths": {
       "@convex/*": ["convex/*"],
+      "@home/*": ["apps/home/src/*"],
       "@shared/*": ["packages/shared/src/*"],
       "@site/*": ["apps/site/src/*"],
       "@studio/*": ["apps/studio/src/*"]
