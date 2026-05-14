@@ -1,21 +1,6 @@
 import { internalQuery } from "./_generated/server";
+import { serializePostOverview } from "./mappers";
 import { serializePublicBookmark } from "./publicBookmarks";
-
-function serializeOverviewPost(post: {
-  slug: string;
-  title: string;
-  excerpt: string;
-  publishedAt: number;
-  readingTimeMinutes: number;
-}) {
-  return {
-    slug: post.slug,
-    title: post.title,
-    excerpt: post.excerpt,
-    publishedAt: post.publishedAt,
-    readingTimeMinutes: post.readingTimeMinutes
-  };
-}
 
 export const overview = internalQuery({
   args: {},
@@ -26,7 +11,7 @@ export const overview = internalQuery({
     return {
       postCount: (await ctx.db.query("posts").collect()).length,
       bookmarkCount: (await ctx.db.query("bookmarks").collect()).length,
-      latestPosts: posts.map(serializeOverviewPost),
+      latestPosts: posts.map(serializePostOverview),
       latestBookmarks: await Promise.all(
         bookmarks.map((bookmark) => serializePublicBookmark(bookmark, (storageId) => ctx.storage.getUrl(storageId)))
       )

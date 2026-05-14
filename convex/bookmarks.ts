@@ -1,15 +1,22 @@
 import { v } from "convex/values";
-import { internalAction } from "./_generated/server";
+import { Effect } from "effect";
+import { internalAction, type ActionCtx } from "./_generated/server";
 
 import { api } from "./api";
 import { normalizeBookmarkUrl } from "../packages/shared/src/site";
+import { ConvexStorage } from "./effects";
 
-async function storeRemoteThumbnail(
-  ctx: { storage: { store: (blob: Blob) => Promise<string> } },
-  sourceUrl: string
-) {
-  try {
-    const response = await fetch(sourceUrl);
+function runStorageEffect<A>(storage: ActionCtx["storage"], program: Effect.Effect<A, never, ConvexStorage>) {
+  return Effect.runPromise(Effect.provideService(program, ConvexStorage, storage));
+}
+
+function storeRemoteThumbnail(sourceUrl: string) {
+  return Effect.gen(function* () {
+    const storage = yield* ConvexStorage;
+    const response = yield* Effect.tryPromise({
+      try: () => fetch(sourceUrl),
+      catch: (error) => error
+    });
 
     if (!response.ok) {
       return undefined;
@@ -21,25 +28,38 @@ async function storeRemoteThumbnail(
       return undefined;
     }
 
-    return ctx.storage.store(await response.blob());
-  } catch {
-    return undefined;
-  }
+    const blob = yield* Effect.tryPromise({
+      try: () => response.blob(),
+      catch: (error) => error
+    });
+
+    return yield* Effect.tryPromise({
+      try: () => storage.store(blob),
+      catch: (error) => error
+    });
+  }).pipe(Effect.catchAll(() => Effect.succeed(undefined)));
 }
 
-async function deleteStoredThumbnail(
-  ctx: { storage: { delete: (storageId: string) => Promise<void> } },
-  storageId?: string | null
-) {
+function deleteStoredThumbnail(storageId?: string | null) {
   if (!storageId) {
-    return;
+    return Effect.void;
   }
 
-  try {
-    await ctx.storage.delete(storageId);
-  } catch {
-    // Thumbnail cleanup should not block bookmark saves.
-  }
+  return Effect.gen(function* () {
+    const storage = yield* ConvexStorage;
+    yield* Effect.tryPromise({
+      try: () => storage.delete(storageId),
+      catch: (error) => error
+    });
+  }).pipe(Effect.catchAll(() => Effect.void));
+}
+
+async function storeThumbnail(ctx: { storage: ActionCtx["storage"] }, sourceUrl: string) {
+  return runStorageEffect(ctx.storage, storeRemoteThumbnail(sourceUrl));
+}
+
+async function deleteThumbnail(ctx: { storage: ActionCtx["storage"] }, storageId?: string | null) {
+  await runStorageEffect(ctx.storage, deleteStoredThumbnail(storageId));
 }
 
 export const publish = internalAction({
@@ -55,7 +75,7 @@ export const publish = internalAction({
     const url = normalizeBookmarkUrl(args.url);
     const hostname = new URL(url).hostname.replace(/^www\./, "");
     const thumbnailSourceUrl = String(args.thumbnailSourceUrl || "").trim();
-    const thumbnailStorageId = thumbnailSourceUrl ? await storeRemoteThumbnail(ctx, thumbnailSourceUrl) : undefined;
+    const thumbnailStorageId = thumbnailSourceUrl ? await storeThumbnail(ctx, thumbnailSourceUrl) : undefined;
 
     await ctx.runMutation(api.bookmarkInternals.persist, {
       url,
@@ -106,13 +126,13 @@ export const updateForStudio = internalAction({
 
     if (nextThumbnailSourceUrl !== currentThumbnailSourceUrl) {
       if (!nextThumbnailSourceUrl) {
-        await deleteStoredThumbnail(ctx, existing.thumbnailStorageId);
+        await deleteThumbnail(ctx, existing.thumbnailStorageId);
         thumbnailSourceUrl = undefined;
         thumbnailStorageId = undefined;
       } else {
-        const storedThumbnailId = await storeRemoteThumbnail(ctx, nextThumbnailSourceUrl);
+        const storedThumbnailId = await storeThumbnail(ctx, nextThumbnailSourceUrl);
 
-        await deleteStoredThumbnail(ctx, existing.thumbnailStorageId);
+        await deleteThumbnail(ctx, existing.thumbnailStorageId);
         thumbnailSourceUrl = nextThumbnailSourceUrl;
         thumbnailStorageId = storedThumbnailId;
       }
