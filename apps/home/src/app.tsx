@@ -25,11 +25,24 @@ function TwinkleLayer() {
 }
 
 const shootingStars = [
-  { top: "-6%", left: "-18%", width: "78px", animationDelay: "1.5s", animationDuration: "18s" },
-  { top: "7%", left: "-30%", width: "64px", animationDelay: "7s", animationDuration: "24s" },
-  { top: "20%", left: "-22%", width: "88px", animationDelay: "13s", animationDuration: "28s" },
-  { top: "-10%", left: "8%", width: "58px", animationDelay: "20s", animationDuration: "22s" },
-  { top: "34%", left: "-36%", width: "72px", animationDelay: "31s", animationDuration: "30s" }
+  { top: "1%", left: "4%", width: "78px", animationDelay: "-24s", animationDuration: "24s" },
+  { top: "1%", left: "18%", width: "96px", animationDelay: "-17s", animationDuration: "34s" },
+  { top: "1%", left: "36%", width: "62px", animationDelay: "-9s", animationDuration: "28s" },
+  { top: "1%", left: "52%", width: "86px", animationDelay: "-2s", animationDuration: "38s" },
+  { top: "1%", left: "68%", width: "70px", animationDelay: "4s", animationDuration: "30s" },
+  { top: "1%", left: "28%", width: "74px", animationDelay: "9s", animationDuration: "42s" },
+  { top: "1%", left: "59%", width: "54px", animationDelay: "13s", animationDuration: "36s" },
+  { top: "1%", left: "11%", width: "90px", animationDelay: "18s", animationDuration: "46s" },
+  { top: "8%", left: "1%", width: "66px", animationDelay: "22s", animationDuration: "32s" },
+  { top: "16%", left: "1%", width: "82px", animationDelay: "27s", animationDuration: "44s" },
+  { top: "25%", left: "1%", width: "58px", animationDelay: "31s", animationDuration: "26s" },
+  { top: "34%", left: "1%", width: "104px", animationDelay: "35s", animationDuration: "48s" },
+  { top: "43%", left: "1%", width: "72px", animationDelay: "39s", animationDuration: "40s" },
+  { top: "52%", left: "1%", width: "88px", animationDelay: "44s", animationDuration: "45s" },
+  { top: "61%", left: "1%", width: "64px", animationDelay: "48s", animationDuration: "29s" },
+  { top: "70%", left: "1%", width: "94px", animationDelay: "52s", animationDuration: "43s" },
+  { top: "1%", left: "44%", width: "76px", animationDelay: "57s", animationDuration: "35s" },
+  { top: "21%", left: "1%", width: "60px", animationDelay: "61s", animationDuration: "39s" }
 ];
 
 function ShootingStarLayer() {

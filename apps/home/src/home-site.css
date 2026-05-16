@@ -13,25 +13,25 @@
 @keyframes home-shooting-star {
     0% {
         opacity: 0;
-        transform: translate3d(0, 0, 0) rotate(28deg) scaleX(0.45);
+        transform: translate3d(0, 0, 0) rotate(var(--home-shooting-star-angle)) scaleX(0.45);
     }
 
-    2% {
+    4% {
         opacity: 0.78;
     }
 
-    11% {
+    19% {
         opacity: 0.72;
     }
 
-    16% {
+    27% {
         opacity: 0;
-        transform: translate3d(118vw, 56vh, 0) rotate(28deg) scaleX(1);
+        transform: translate3d(var(--home-shooting-star-travel-x), var(--home-shooting-star-travel-y), 0) rotate(var(--home-shooting-star-angle)) scaleX(1);
     }
 
     100% {
         opacity: 0;
-        transform: translate3d(118vw, 56vh, 0) rotate(28deg) scaleX(1);
+        transform: translate3d(var(--home-shooting-star-travel-x), var(--home-shooting-star-travel-y), 0) rotate(var(--home-shooting-star-angle)) scaleX(1);
     }
 }
 
@@ -44,6 +44,9 @@
 }
 
 .home-shooting-star {
+    --home-shooting-star-angle: 28deg;
+    --home-shooting-star-travel-x: 72vmax;
+    --home-shooting-star-travel-y: 38.3vmax;
     position: absolute;
     height: 2px;
     border-radius: 999px;
